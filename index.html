@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="emerald" data-mode="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#059669" />
+  <meta name="description" content="نظام إدارة الحلقات القرآنية - شباب مسجد قطنا (يعمل بدون إنترنت)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="حلقات مسجد قطنا" />
+  <title>إدارة الحلقات القرآنية - شباب مسجد قطنا</title>
+
+  <!-- روابط PWA والأيقونات -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- ملف التنسيقات الرئيسي -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ====================================================================
+       الرأس وشريط التنقل الرئيسي (Header & Main Navigation)
+       ==================================================================== -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-area">
+        <div class="brand-logo" aria-hidden="true">ق</div>
+        <div class="brand-titles">
+          <h1>إدارة الحلقات القرآنية - شباب مسجد قطنا</h1>
+          <p>نظام الإدارة والتحفيز والبطاقات الذكية (Offline PWA)</p>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="التنقل الرئيسي">
+        <button type="button" class="nav-tab active" data-target="view-dashboard">
+          <span class="tab-icon">🕌</span>
+          <span>اللوحة الرئيسية</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="view-points">
+          <span class="tab-icon">🏆</span>
+          <span>إدارة النقاط والمراكز</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="view-cards">
+          <span class="tab-icon">🪪</span>
+          <span>بطاقات الطلاب (PDF)</span>
+        </button>
+        <button type="button" class="nav-tab" data-target="view-settings">
+          <span class="tab-icon">⚙️</span>
+          <span>الإعدادات والنسخ</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       المحتوى الرئيسي والأقسام الأربعة (Main Content & Views)
+       ==================================================================== -->
+  <main class="app-main">
+
+    <!-- ------------------------------------------------------------------
+         القسم 1: اللوحة الرئيسية (Dashboard - الحلقات والطلاب حصراً)
+         ------------------------------------------------------------------ -->
+    <section id="view-dashboard" class="view-section active">
+      <!-- بطاقات الإحصائيات السريعة -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>إجمالي الحلقات</h3>
+            <div class="stat-value" id="stat-total-circles">0</div>
+          </div>
+          <div class="stat-icon">📚</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>إجمالي الطلاب المسجلين</h3>
+            <div class="stat-value" id="stat-total-students">0</div>
+          </div>
+          <div class="stat-icon">👥</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>طلاب الحلقة المعروضة</h3>
+            <div class="stat-value" id="stat-filtered-students">0</div>
+          </div>
+          <div class="stat-icon">🎯</div>
+        </div>
+      </div>
+
+      <!-- عنوان القسم وأزرار الإضافة -->
+      <div class="section-header">
+        <h2 class="section-title">📋 إدارة الحلقات وبيانات الطلاب</h2>
+        <div class="action-group">
+          <button type="button" class="btn btn-outline" id="btn-open-add-circle">
+            <span>➕</span>
+            <span>إضافة حلقة جديدة</span>
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-open-add-student">
+            <span>👤➕</span>
+            <span>إضافة طالب جديد</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- شريط تصفية الحلقات -->
+      <div class="circles-bar">
+        <div class="circles-list" id="dashboard-circles-list">
+          <!-- يتم توليد أزرار الحلقات هنا ديناميكياً عبر js/students.js -->
+        </div>
+        <button type="button" class="btn btn-danger-outline btn-sm" id="btn-delete-active-circle" style="display: none;">
+          🗑️ حذف الحلقة المحددة
+        </button>
+      </div>
+
+      <!-- شريط البحث الفوري والفرز الأبجدي -->
+      <div class="toolbar-card">
+        <div class="search-box">
+          <input
+            type="search"
+            id="dashboard-search-input"
+            class="search-input"
+            placeholder="ابحث عن طالب بالاسم أو المعرّف (مثل QAT-1001) أو رقم الأهل..."
+            autocomplete="off"
+          />
+        </div>
+        <div class="action-group">
+          <button type="button" class="btn btn-secondary" id="btn-toggle-alpha-sort" data-sorted="false">
+            <span>🔤</span>
+            <span id="alpha-sort-label">ترتيب أبجدي: إيقاف</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- شبكة بطاقات الطلاب (تعرض الاسم، العمر، والمعرّف فقط بدون أزرار نقاط) -->
+      <div class="students-grid" id="dashboard-students-grid">
+        <!-- يتم توليد بطاقات الطلاب هنا عبر js/students.js -->
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------------
+         القسم 2: واجهة إدارة النقاط والمراكز والـ QR (Points & Leaderboard)
+         ------------------------------------------------------------------ -->
+    <section id="view-points" class="view-section">
+      <div class="section-header">
+        <h2 class="section-title">🏆 إدارة النقاط ولوحة المراكز (Leaderboard)</h2>
+        <div class="action-group">
+          <button type="button" class="btn btn-primary" id="btn-open-qr-scanner">
+            <span>📷</span>
+            <span>إضافة/خصم نقاط بواسطة QR</span>
+          </button>
+          <button type="button" class="btn btn-outline" id="btn-open-batch-ids">
+            <span>⌨️</span>
+            <span>إضافة/خصم بالمعرّفات النصية (IDs)</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="btn-export-leaderboard-html">
+            <span>🌐</span>
+            <span>تصدير المراكز كملف HTML</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- شريط البحث وفلترة الحلقة داخل واجهة النقاط -->
+      <div class="toolbar-card">
+        <div class="search-box">
+          <input
+            type="search"
+            id="points-search-input"
+            class="search-input"
+            placeholder="ابحث في قائمة المراكز بالاسم أو المعرّف (ID)..."
+            autocomplete="off"
+          />
+        </div>
+        <div class="action-group" style="min-width: 220px;">
+          <select id="points-circle-filter" class="form-control">
+            <option value="ALL">جميع الحلقات</option>
+          </select>
+        </div>
+      </div>
+
+      <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0.9rem;">
+        💡 اضغط على اسم أي طالب في القائمة أدناه لعرض سجل نقاطه المفصل أو لإضافة/إزالة نقاط فردية مع تحديد السبب.
+      </p>
+
+      <!-- قائمة المراكز التنازلية مع الميداليات -->
+      <div class="leaderboard-list" id="points-leaderboard-list">
+        <!-- يتم توليد قائمة المراكز هنا عبر js/points.js -->
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------------
+         القسم 3: استوديو تصميم وتصدير بطاقات الطلاب (Cards Studio & PDF)
+         ------------------------------------------------------------------ -->
+    <section id="view-cards" class="view-section">
+      <div class="section-header">
+        <h2 class="section-title">🪪 استوديو تصميم بطاقات الطلاب وتصدير PDF للطباعة المزدوجة</h2>
+        <div class="action-group">
+          <button type="button" class="btn btn-secondary" id="btn-reset-card-design">
+            <span>🔄</span>
+            <span>استعادة الإحداثيات الافتراضية</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-lg" id="btn-export-cards-pdf">
+            <span>🖨️</span>
+            <span>تصدير البطاقات المحددة (PDF Duplex)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="studio-layout">
+        <!-- لوحة أدوات التحكم بالتصميم -->
+        <div class="studio-panel">
+          <h3>🎨 إعدادات التصميم والإحداثيات (74.25mm × 105mm)</h3>
+
+          <!-- رفع الخلفيات -->
+          <div class="control-block">
+            <h4>🖼️ صور خلفية البطاقة (اختياري)</h4>
+            <div class="control-grid">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="card-front-bg-input">خلفية الوجه الأمامي</label>
+                <input type="file" id="card-front-bg-input" class="form-control" accept="image/*" />
+                <button type="button" class="btn btn-sm btn-danger-outline" id="btn-clear-front-bg" style="margin-top: 0.4rem; width: 100%;">
+                  مسح الخلفية الأمامية
+                </button>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="card-back-bg-input">خلفية الوجه الخلفي</label>
+                <input type="file" id="card-back-bg-input" class="form-control" accept="image/*" />
+                <button type="button" class="btn btn-sm btn-danger-outline" id="btn-clear-back-bg" style="margin-top: 0.4rem; width: 100%;">
+                  مسح الخلفية الخلفية
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- تحكم الوجه الأمامي: اسم الطالب -->
+          <div class="control-block">
+            <h4>👤 الوجه الأمامي: اسم الطالب</h4>
+            <div class="control-grid">
+              <div>
+                <label class="form-label" for="cfg-name-x">الموضع الأفقي (X)</label>
+                <input type="range" id="cfg-name-x" min="10" max="300" value="155" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-name-y">الموضع العمودي (Y)</label>
+                <input type="range" id="cfg-name-y" min="20" max="420" value="160" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-name-size">حجم الخط (px)</label>
+                <input type="number" id="cfg-name-size" class="form-control" min="10" max="60" value="22" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-name-color">لون الخط</label>
+                <input type="color" id="cfg-name-color" value="#0f172a" />
+              </div>
+            </div>
+          </div>
+
+          <!-- تحكم الوجه الأمامي: العمر -->
+          <div class="control-block">
+            <h4>🎂 الوجه الأمامي: عمر الطالب</h4>
+            <div class="control-grid">
+              <div>
+                <label class="form-label" for="cfg-age-x">الموضع الأفقي (X)</label>
+                <input type="range" id="cfg-age-x" min="10" max="300" value="155" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-age-y">الموضع العمودي (Y)</label>
+                <input type="range" id="cfg-age-y" min="20" max="420" value="200" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-age-size">حجم الخط (px)</label>
+                <input type="number" id="cfg-age-size" class="form-control" min="10" max="50" value="16" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-age-color">لون الخط</label>
+                <input type="color" id="cfg-age-color" value="#334155" />
+              </div>
+            </div>
+          </div>
+
+          <!-- تحكم الوجه الأمامي: رمز QR -->
+          <div class="control-block">
+            <h4>🔳 الوجه الأمامي: رمز الـ QR (يحتوي المعرّف ID فقط)</h4>
+            <div class="control-grid">
+              <div>
+                <label class="form-label" for="cfg-qr-x">الموضع الأفقي (X)</label>
+                <input type="range" id="cfg-qr-x" min="5" max="250" value="80" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-qr-y">الموضع العمودي (Y)</label>
+                <input type="range" id="cfg-qr-y" min="10" max="360" value="235" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-qr-size">حجم الرمز (px)</label>
+                <input type="range" id="cfg-qr-size" min="60" max="240" value="150" />
+              </div>
+            </div>
+          </div>
+
+          <!-- تحكم الوجه الخلفي: اسم المسجد الثابت -->
+          <div class="control-block" style="margin-bottom: 0;">
+            <h4>🕌 الوجه الخلفي الثابت: اسم المسجد</h4>
+            <div class="form-group">
+              <label class="form-label" for="cfg-mosque-text">النص الثابت على ظهر جميع البطاقات</label>
+              <input type="text" id="cfg-mosque-text" class="form-control" value="شباب مسجد قطنا" />
+            </div>
+            <div class="control-grid">
+              <div>
+                <label class="form-label" for="cfg-mosque-x">الموضع الأفقي (X)</label>
+                <input type="range" id="cfg-mosque-x" min="10" max="300" value="155" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-mosque-y">الموضع العمودي (Y)</label>
+                <input type="range" id="cfg-mosque-y" min="20" max="420" value="220" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-mosque-size">حجم الخط (px)</label>
+                <input type="number" id="cfg-mosque-size" class="form-control" min="12" max="64" value="24" />
+              </div>
+              <div>
+                <label class="form-label" for="cfg-mosque-color">لون الخط</label>
+                <input type="color" id="cfg-mosque-color" value="#059669" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- لوحة المعاينة المباشرة وتحديد الطلاب للطباعة -->
+        <div class="studio-panel">
+          <h3>👁️ المعاينة الحية للبطاقة واختيار الطلاب</h3>
+
+          <div class="form-group">
+            <label class="form-label" for="card-preview-student-select">اختر طالباً للمعاينة الحية:</label>
+            <select id="card-preview-student-select" class="form-control">
+              <option value="">-- معاينة تجريبية افتراضية --</option>
+            </select>
+          </div>
+
+          <div class="canvas-preview-area">
+            <div class="canvas-pair">
+              <div class="canvas-wrapper">
+                <span>الوجه الأمامي (Front)</span>
+                <canvas id="card-front-canvas" class="card-canvas" width="310" height="440"></canvas>
+              </div>
+              <div class="canvas-wrapper">
+                <span>الوجه الخلفي الثابت (Back)</span>
+                <canvas id="card-back-canvas" class="card-canvas" width="310" height="440"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.25rem 0;" />
+
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <h4 style="font-size: 0.96rem; font-weight: 700;">✅ تحديد الطلاب المراد طباعة بطاقاتهم (8 بطاقات / صفحة A4)</h4>
+              <div class="action-group">
+                <button type="button" class="btn btn-sm btn-outline" id="btn-cards-select-all">تحديد الكل</button>
+                <button type="button" class="btn btn-sm btn-secondary" id="btn-cards-deselect-all">إلغاء الكل</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 0.65rem; margin-bottom: 0.5rem;">
+              <select id="cards-circle-filter" class="form-control">
+                <option value="ALL">عرض طلاب جميع الحلقات</option>
+              </select>
+            </div>
+
+            <div class="students-checklist" id="cards-students-checklist">
+              <!-- قائمة اختيار الطلاب للطباعة تُولد ديناميكياً -->
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+              <span id="cards-selected-count-label">عدد الطلاب المحددين: 0</span>
+              <span>ترتيب الطباعة: صفحة أمامي (8) تليها صفحة خلفي (8)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------------
+         القسم 4: الإعدادات، الثيمات، والنسخ الاحتياطي (Settings & Backup)
+         ------------------------------------------------------------------ -->
+    <section id="view-settings" class="view-section">
+      <div class="section-header">
+        <h2 class="section-title">⚙️ إعدادات المظهر والنسخ الاحتياطي</h2>
+      </div>
+
+      <div class="settings-grid">
+        <!-- بطاقة المظهر والثيمات الخضراء -->
+        <div class="settings-card">
+          <h3>🎨 المظهر والثيمات الخضراء</h3>
+          <p>اختر بين الوضع النهاري والليلي، وبدّل بين 3 ثيمات خضراء مريحة للعين.</p>
+
+          <div class="mode-switch-row">
+            <div>
+              <strong style="display: block; font-size: 0.95rem;">الوضع الليلي / النهاري</strong>
+              <span id="current-mode-label" style="font-size: 0.82rem; color: var(--text-secondary);">الوضع الحالي: نهاري ☀️</span>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-toggle-dark-mode">
+              تبديل الوضع 🌗
+            </button>
+          </div>
+
+          <div class="theme-options">
+            <button type="button" class="theme-option-btn active" data-theme-choice="emerald">
+              <span>1. الأخضر الزمردي (Emerald - الافتراضي)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #059669;"></span>
+                <span class="color-swatch" style="background-color: #10b981;"></span>
+                <span class="color-swatch" style="background-color: #064e3b;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="forest">
+              <span>2. أخضر الغابات (Forest & Slate)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #15803d;"></span>
+                <span class="color-swatch" style="background-color: #22c55e;"></span>
+                <span class="color-swatch" style="background-color: #1e293b;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="olive">
+              <span>3. الأخضر الزيتوني الهادئ (Sage & Olive)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #4d7c0f;"></span>
+                <span class="color-swatch" style="background-color: #65a30d;"></span>
+                <span class="color-swatch" style="background-color: #1f2b14;"></span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- بطاقة النسخ الاحتياطي واستعادة البيانات -->
+        <div class="settings-card">
+          <h3>💾 النسخ الاحتياطي واستيراد البيانات (.txt)</h3>
+          <p>
+            جميع البيانات محفوظة محلياً على جهازك في <code>localStorage</code>. يُنصح بتصدير نسخة احتياطية دورياً لحفظ بيانات الحلقات والطلاب وسجلات النقاط.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+            <button type="button" class="btn btn-primary btn-block" id="btn-export-backup-txt">
+              <span>📥</span>
+              <span>تصدير البيانات كنسخة احتياطية (.txt)</span>
+            </button>
+
+            <button type="button" class="btn btn-outline btn-block" id="btn-trigger-import-txt">
+              <span>📤</span>
+              <span>استيراد بيانات من ملف نسخة احتياطية (.txt)</span>
+            </button>
+
+            <!-- حقل رفع الملف النصي المخفي كما هو مطلوب في المواصفات -->
+            <input type="file" id="input-import-backup-txt" accept=".txt" style="display: none;" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ====================================================================
+       النوافذ المنبثقة (Modals)
+       ==================================================================== -->
+
+  <!-- 1. نافذة إضافة حلقة جديدة -->
+  <div class="modal-overlay" id="modal-add-circle" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ إضافة حلقة قرآنية جديدة</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-add-circle">&times;</button>
+      </div>
+      <form id="form-add-circle">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="input-circle-name">اسم الحلقة القرآنية *</label>
+            <input
+              type="text"
+              id="input-circle-name"
+              class="form-control"
+              placeholder="مثال: حلقة عمر بن الخطاب"
+              required
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-add-circle">إلغاء</button>
+          <button type="submit" class="btn btn-primary">حفظ الحلقة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. نافذة إضافة طالب جديد -->
+  <div class="modal-overlay" id="modal-add-student" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">👤➕ تسجيل طالب جديد في الحلقات</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-add-student">&times;</button>
+      </div>
+      <form id="form-add-student">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="input-student-name">اسم الطالب الثلاثي *</label>
+            <input
+              type="text"
+              id="input-student-name"
+              class="form-control"
+              placeholder="مثال: عبد الرحمن أحمد المنصور"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="input-student-age">العمر (بالسنوات) *</label>
+            <input
+              type="number"
+              id="input-student-age"
+              class="form-control"
+              min="4"
+              max="80"
+              placeholder="مثال: 12"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="input-student-phone">رقم هاتف الأهل</label>
+            <input
+              type="tel"
+              id="input-student-phone"
+              class="form-control"
+              placeholder="مثال: 09xxxxxxxx"
+              dir="ltr"
+            />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="input-student-circle">الحلقة القرآنية *</label>
+            <select id="input-student-circle" class="form-control" required></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-add-student">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إضافة الطالب وتوليد المعرّف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. نافذة عرض وتعديل الملف الشخصي للطالب وحذفه (Edit Profile Modal - اللوحة الرئيسية) -->
+  <div class="modal-overlay" id="modal-edit-student" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">📝 الملف الشخصي للطالب</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-edit-student">&times;</button>
+      </div>
+      <form id="form-edit-student">
+        <div class="modal-body">
+          <input type="hidden" id="edit-student-id" />
+
+          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-muted); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; border: 1px solid var(--border-color);">
+            <span style="font-size: 0.88rem; color: var(--text-secondary);">المعرّف الفريد للبطاقة (ID):</span>
+            <strong id="edit-student-id-display" class="student-id-badge">QAT-1001</strong>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-student-name">اسم الطالب *</label>
+            <input type="text" id="edit-student-name" class="form-control" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-student-age">العمر *</label>
+            <input type="number" id="edit-student-age" class="form-control" min="4" max="80" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-student-phone">رقم هاتف الأهل</label>
+            <input type="tel" id="edit-student-phone" class="form-control" dir="ltr" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="edit-student-circle">الحلقة القرآنية *</label>
+            <select id="edit-student-circle" class="form-control" required></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger-outline" id="btn-delete-student">
+            🗑️ حذف الطالب
+          </button>
+          <div class="action-group">
+            <button type="button" class="btn btn-secondary" data-close-modal="modal-edit-student">إغلاق</button>
+            <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. النافذة المنبثقة الأولى للنقاط: ملخص نقاط الطالب وسجله (واجهة إدارة النقاط) -->
+  <div class="modal-overlay" id="modal-student-points-overview" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="points-modal-student-name">سجل نقاط الطالب</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-student-points-overview">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="points-modal-student-id" />
+
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--primary-soft); border: 1px solid var(--primary-border); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">إجمالي الرصيد الحالي</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary-hover);" id="points-modal-total-score">0</div>
+          </div>
+          <span class="student-id-badge" id="points-modal-id-badge">QAT-1001</span>
+        </div>
+
+        <!-- الزران الرئيسيان لفتح النافذة المنبثقة الثانية -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.2rem;">
+          <button type="button" class="btn btn-primary btn-lg" id="btn-open-points-action-add">
+            ➕ إضافة نقاط
+          </button>
+          <button type="button" class="btn btn-danger btn-lg" id="btn-open-points-action-deduct">
+            ➖ إزالة نقاط
+          </button>
+        </div>
+
+        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">📜 سجل تغييرات النقاط والأسباب</h4>
+        <div class="points-log-container" id="points-modal-log-list">
+          <!-- يتم توليد سجل النقاط هنا عبر js/points.js -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-modal="modal-student-points-overview">إغلاق النافذة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. النافذة المنبثقة الثانية المتتالية للنقاط: تحديد العدد والسبب الإلزامي -->
+  <div class="modal-overlay modal-level-2" id="modal-points-action-form" aria-hidden="true">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="points-action-modal-title">إضافة نقاط للطالب</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-points-action-form">&times;</button>
+      </div>
+      <form id="form-single-points-action">
+        <div class="modal-body">
+          <input type="hidden" id="single-points-operation-type" value="add" />
+
+          <div class="form-group">
+            <label class="form-label" for="input-single-points-amount">عدد النقاط *</label>
+            <input
+              type="number"
+              id="input-single-points-amount"
+              class="form-control"
+              min="1"
+              max="1000"
+              value="5"
+              required
+            />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="input-single-points-reason">السبب (حقل إلزامي) *</label>
+            <input
+              type="text"
+              id="input-single-points-reason"
+              class="form-control"
+              placeholder="مثال: تسميع صفحة كاملة بإتقان / حضور مبكر"
+              required
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-points-action-form">رجوع</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-single-points">تأكيد وحفظ في السجل</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. نافذة الإدخال الجماعي للنقاط بواسطة المعرّفات النصية المفصولة بفاصلة (Batch IDs) -->
+  <div class="modal-overlay" id="modal-batch-ids-points" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">⌨️ إضافة/خصم نقاط جماعي بالمعرّفات (Batch IDs)</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-batch-ids-points">&times;</button>
+      </div>
+      <form id="form-batch-ids-points">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="batch-operation-type">نوع العملية *</label>
+            <select id="batch-operation-type" class="form-control" required>
+              <option value="add">➕ إضافة نقاط للحاضرين / المتميزين</option>
+              <option value="deduct">➖ خصم نقاط للغائبين / المخالفين</option>
+            </select>
+          </div>
+
+          <div class="control-grid">
+            <div class="form-group">
+              <label class="form-label" for="batch-points-amount">مقدار النقاط *</label>
+              <input type="number" id="batch-points-amount" class="form-control" min="1" max="1000" value="5" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="batch-points-reason">السبب الموحد في السجل *</label>
+              <input type="text" id="batch-points-reason" class="form-control" placeholder="مثال: حضور جلسة يوم الجمعة" required />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="batch-ids-textarea">
+              معرّفات الطلاب (IDs) مفصولة بفاصلة <code>,</code> *
+            </label>
+            <textarea
+              id="batch-ids-textarea"
+              class="form-control"
+              rows="4"
+              dir="ltr"
+              placeholder="QAT-1001, QAT-1002, QAT-1005 أو 1001, 1002, 1005"
+              required
+            ></textarea>
+            <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
+              يمكنك كتابة المعرّف كاملاً مثل <code>QAT-1001</code> أو الرقم فقط <code>1001</code> مع الفصل بفاصلة <code>,</code>.
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-batch-ids-points">إلغاء</button>
+          <button type="submit" class="btn btn-primary">تطبيق العملية على جميع الطلاب</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. نافذة قارئ الـ QR الفائق السرعة (الكاميرا المستمرة + قارئ الليزر Keyboard Wedge) -->
+  <div class="modal-overlay" id="modal-qr-scanner" aria-hidden="true">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📷 الماسح السريع لبطاقات الـ QR (أسلوب السوبر ماركت)</h3>
+        <button type="button" class="modal-close" id="btn-close-qr-modal" data-close-modal="modal-qr-scanner">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- إعدادات العملية قبل وأثناء المسح -->
+        <div class="control-grid" style="margin-bottom: 0.85rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="qr-operation-type">نوع العملية الفورية</label>
+            <select id="qr-operation-type" class="form-control">
+              <option value="add">➕ إضافة نقاط للحاضرين</option>
+              <option value="deduct">➖ خصم نقاط للغائبين</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="qr-points-amount">مقدار النقاط لكل مسحة</label>
+            <input type="number" id="qr-points-amount" class="form-control" min="1" max="1000" value="5" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="qr-points-reason">السبب المسجل تلقائياً</label>
+            <input type="text" id="qr-points-reason" class="form-control" value="تسجيل حضور عبر بطاقة QR" placeholder="اكتب السبب..." />
+          </div>
+        </div>
+
+        <div class="qr-scanner-box">
+          <div class="scanner-status-bar">
+            <div>
+              <span class="status-dot"></span>
+              <strong id="qr-scanner-status-text">قارئ الليزر الخارجي (USB/Wireless) جاهز للاستقبال الفوري</strong>
+            </div>
+            <div class="action-group">
+              <button type="button" class="btn btn-sm btn-primary" id="btn-start-camera-scan">تشغيل الكاميرا 📷</button>
+              <button type="button" class="btn btn-sm btn-danger" id="btn-stop-camera-scan" style="display: none;">إيقاف الكاميرا ⏹️</button>
+            </div>
+          </div>
+
+          <!-- حاوية كاميرا html5-qrcode -->
+          <div id="qr-reader"></div>
+
+          <p style="font-size: 0.83rem; color: var(--text-secondary); text-align: center; margin-top: 0.5rem;">
+            ⚡ يمكنك المسح المتتالي بالكاميرا دون توقف، أو استخدام قارئ الباركود الليزري مباشرة (مع مهلة 2 ثانية لمنع تكرار نفس البطاقة بالخطأ).
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="qr-session-counter" style="font-weight: 700; color: var(--primary-hover);">إجمالي العمليات في هذه الجلسة: 0</span>
+        <button type="button" class="btn btn-secondary" id="btn-footer-close-qr" data-close-modal="modal-qr-scanner">إغلاق الماسح</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- حاوية إشعارات Toast السفلية غير المعطلة للعمل -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- ====================================================================
+       المكتبات الخارجية المحملة محلياً (Offline Local Libraries)
+       ==================================================================== -->
+  <script src="libs/html5-qrcode.min.js"></script>
+  <script src="libs/qrious.min.js"></script>
+  <script src="libs/jspdf.umd.min.js"></script>
+
+  <!-- ====================================================================
+       ملفات المنطق البرمجي للمشروع (Modular App Scripts)
+       ==================================================================== -->
+  <script src="js/db.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/students.js"></script>
+  <script src="js/points.js"></script>
+  <script src="js/qr-scanner.js"></script>
+  <script src="js/cards-pdf.js"></script>
+</body>
+</html>

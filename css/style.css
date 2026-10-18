@@ -1,0 +1,1352 @@
+/* ==========================================================================
+ *  نظام إدارة الحلقات القرآنية - شباب مسجد قطنا
+ *  ملف التنسيقات الشامل (style.css)
+ *  خالي تماماً من اللون البنفسجي وتدرجاته | يدعم 3 ثيمات خضراء + الوضع الليلي/النهاري
+ *  ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ *  1. متغيرات الثيمات والألوان (Themes & Light/Dark Modes)
+ *  -------------------------------------------------------------------------- */
+
+/* الثيم الأول (الافتراضي): الأخضر الزمردي (Emerald) - الوضع النهاري */
+:root,
+[data-theme="emerald"][data-mode="light"] {
+    --primary: #059669;
+    --primary-hover: #10b981;
+    --primary-soft: rgba(5, 150, 105, 0.12);
+    --primary-border: rgba(5, 150, 105, 0.3);
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-muted: #f1f5f9;
+    --bg-input: #ffffff;
+    --text-main: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.14);
+    --success: #16a34a;
+    --success-soft: rgba(22, 163, 74, 0.12);
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --danger-soft: rgba(220, 38, 38, 0.12);
+    --warning: #d97706;
+    --warning-soft: rgba(217, 119, 6, 0.12);
+    --gold: #eab308;
+    --silver: #94a3b8;
+    --bronze: #b45309;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: 0.2s ease-in-out;
+}
+
+/* الثيم الأول: الأخضر الزمردي (Emerald) - الوضع الليلي */
+[data-theme="emerald"][data-mode="dark"] {
+    --primary: #059669;
+    --primary-hover: #10b981;
+    --primary-soft: rgba(16, 185, 129, 0.18);
+    --primary-border: rgba(16, 185, 129, 0.4);
+    --bg-main: #022c22;
+    --bg-card: #064e3b;
+    --bg-muted: #043927;
+    --bg-input: #033a2c;
+    --text-main: #ecfdf5;
+    --text-secondary: #a7f3d0;
+    --text-muted: #6ee7b7;
+    --border-color: rgba(167, 243, 208, 0.2);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* الثيم الثاني: أخضر الغابات (Forest & Slate) - الوضع النهاري */
+[data-theme="forest"][data-mode="light"] {
+    --primary: #15803d;
+    --primary-hover: #22c55e;
+    --primary-soft: rgba(21, 128, 61, 0.12);
+    --primary-border: rgba(21, 128, 61, 0.3);
+    --bg-main: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-muted: #e2e8f0;
+    --bg-input: #ffffff;
+    --text-main: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+}
+
+/* الثيم الثاني: أخضر الغابات (Forest & Slate) - الوضع الليلي */
+[data-theme="forest"][data-mode="dark"] {
+    --primary: #15803d;
+    --primary-hover: #22c55e;
+    --primary-soft: rgba(34, 197, 94, 0.16);
+    --primary-border: rgba(34, 197, 94, 0.38);
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-muted: #162032;
+    --bg-input: #0f172a;
+    --text-main: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* الثيم الثالث: الأخضر الزيتوني الهادئ (Sage & Olive) - الوضع النهاري */
+[data-theme="olive"][data-mode="light"] {
+    --primary: #4d7c0f;
+    --primary-hover: #65a30d;
+    --primary-soft: rgba(77, 124, 15, 0.12);
+    --primary-border: rgba(77, 124, 15, 0.3);
+    --bg-main: #fcfdfa;
+    --bg-card: #ffffff;
+    --bg-muted: #f3f6ed;
+    --bg-input: #ffffff;
+    --text-main: #1c1917;
+    --text-secondary: #44403c;
+    --text-muted: #78716c;
+    --border-color: #e5e7eb;
+}
+
+/* الثيم الثالث: الأخضر الزيتوني الهادئ (Sage & Olive) - الوضع الليلي */
+[data-theme="olive"][data-mode="dark"] {
+    --primary: #4d7c0f;
+    --primary-hover: #65a30d;
+    --primary-soft: rgba(101, 163, 13, 0.18);
+    --primary-border: rgba(101, 163, 13, 0.4);
+    --bg-main: #141c0c;
+    --bg-card: #1f2b14;
+    --bg-muted: #18230f;
+    --bg-input: #141c0c;
+    --text-main: #f5f5f4;
+    --text-secondary: #d9f99d;
+    --text-muted: #a3e635;
+    --border-color: rgba(163, 230, 53, 0.22);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
+}
+
+/* --------------------------------------------------------------------------
+ *  2. القواعد الأساسية وإعادة الضبط (Base & Reset)
+ *  -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    direction: rtl;
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: "Tajawal", "Cairo", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color var(--transition), color var(--transition);
+    padding-bottom: 75px; /* مساحة لشريط التنقل السفلي في الجوال */
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+ul,
+ol {
+    list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+    font-size: 1rem;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+
+/* --------------------------------------------------------------------------
+ *  3. الرأس وشريط التنقل (Header & Navigation)
+ *  -------------------------------------------------------------------------- */
+.app-header {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    transition: background-color var(--transition), border-color var(--transition);
+}
+
+.header-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.brand-area {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.brand-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.35rem;
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+}
+
+.brand-titles h1 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.3;
+}
+
+.brand-titles p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+/* شريط التنقل الرئيسي */
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    background-color: transparent;
+    transition: all var(--transition);
+}
+
+.nav-tab:hover {
+    background-color: var(--primary-soft);
+    color: var(--primary-hover);
+}
+
+.nav-tab.active {
+    background-color: var(--primary);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-tab .tab-icon {
+    font-size: 1.15rem;
+}
+
+/* --------------------------------------------------------------------------
+ *  4. الحاوية الرئيسية والأقسام (Main Container & Views)
+ *  -------------------------------------------------------------------------- */
+.app-main {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem;
+    flex: 1;
+}
+
+.view-section {
+    display: none;
+    animation: fadeIn 0.22s ease-out;
+}
+
+.view-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* بطاقات الإحصائيات السريعة */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-info h3 {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.stat-info .stat-value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--primary-hover);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+ *  5. الأزرار وأدوات التحكم (Buttons & Controls)
+ *  -------------------------------------------------------------------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.92rem;
+    transition: all var(--transition);
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background-color: var(--bg-muted);
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary-hover);
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--primary-hover);
+    border-color: var(--primary-border);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-soft);
+}
+
+.btn-danger {
+    background-color: var(--danger);
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: var(--danger-hover);
+}
+
+.btn-danger-outline {
+    background-color: var(--danger-soft);
+    color: var(--danger);
+    border-color: rgba(220, 38, 38, 0.3);
+}
+
+.btn-danger-outline:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.84rem;
+}
+
+.btn-lg {
+    padding: 0.85rem 1.6rem;
+    font-size: 1.02rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ *  6. الأشرطة العلوية، الحلقات، والبحث والفرز (Toolbars, Circles & Filters)
+ *  -------------------------------------------------------------------------- */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+/* شريط فلترة الحلقات */
+.circles-bar {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-sm);
+}
+
+.circles-list {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.circle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    background-color: var(--bg-muted);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition);
+    cursor: pointer;
+}
+
+.circle-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary-hover);
+}
+
+.circle-chip.active {
+    background-color: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+.circle-chip .chip-count {
+    background-color: rgba(0, 0, 0, 0.15);
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+}
+
+/* شريط البحث والفرز */
+.toolbar-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.65rem 1rem 0.65rem 2.5rem;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* --------------------------------------------------------------------------
+ *  7. شبكة وبطاقات الطلاب في اللوحة الرئيسية (Students Grid & Cards)
+ *  -------------------------------------------------------------------------- */
+.students-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 1rem;
+}
+
+.student-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.15rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.85rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    background-color: var(--primary);
+}
+
+.student-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+.student-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.student-name {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--text-main);
+    transition: color var(--transition);
+}
+
+.student-card:hover .student-name {
+    color: var(--primary-hover);
+}
+
+.student-id-badge {
+    font-family: monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--primary-soft);
+    color: var(--primary-hover);
+    border: 1px solid var(--primary-border);
+    direction: ltr;
+}
+
+.student-card-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+}
+
+.meta-pill {
+    background-color: var(--bg-muted);
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* حالة القائمة الفارغة */
+.empty-state {
+    background-color: var(--bg-card);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    grid-column: 1 / -1;
+}
+
+.empty-state-icon {
+    font-size: 2.8rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.8;
+}
+
+.empty-state h3 {
+    font-size: 1.15rem;
+    color: var(--text-main);
+    margin-bottom: 0.35rem;
+}
+
+/* --------------------------------------------------------------------------
+ *  8. واجهة إدارة النقاط ولوحة المراكز (Points & Leaderboard)
+ *  -------------------------------------------------------------------------- */
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leaderboard-row {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.95rem 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.leaderboard-row:hover {
+    border-color: var(--primary);
+    transform: translateX(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.leaderboard-row.rank-1 {
+    border-right: 5px solid var(--gold);
+    background: linear-gradient(90deg, var(--bg-card) 0%, rgba(234, 179, 8, 0.08) 100%);
+}
+
+.leaderboard-row.rank-2 {
+    border-right: 5px solid var(--silver);
+    background: linear-gradient(90deg, var(--bg-card) 0%, rgba(148, 163, 184, 0.08) 100%);
+}
+
+.leaderboard-row.rank-3 {
+    border-right: 5px solid var(--bronze);
+    background: linear-gradient(90deg, var(--bg-card) 0%, rgba(180, 83, 9, 0.08) 100%);
+}
+
+.rank-info {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex: 1;
+}
+
+.rank-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--bg-muted);
+    color: var(--text-main);
+    font-weight: 800;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.rank-1 .rank-badge {
+    background-color: rgba(234, 179, 8, 0.2);
+    border-color: var(--gold);
+    font-size: 1.35rem;
+}
+
+.rank-2 .rank-badge {
+    background-color: rgba(148, 163, 184, 0.25);
+    border-color: var(--silver);
+    font-size: 1.35rem;
+}
+
+.rank-3 .rank-badge {
+    background-color: rgba(180, 83, 9, 0.2);
+    border-color: var(--bronze);
+    font-size: 1.35rem;
+}
+
+.student-rank-details h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.student-rank-details p {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.points-score-box {
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background-color: var(--primary-soft);
+    border: 1px solid var(--primary-border);
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-sm);
+}
+
+.points-score-box .points-num {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary-hover);
+}
+
+.points-score-box .points-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* سجل النقاط داخل النافذة المنبثقة */
+.points-log-container {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-muted);
+    padding: 0.65rem;
+    margin-top: 0.75rem;
+}
+
+.log-item {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.log-item:last-child {
+    margin-bottom: 0;
+}
+
+.log-reason {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-main);
+}
+
+.log-date {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+.log-amount {
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-sm);
+    direction: ltr;
+}
+
+.log-amount.positive {
+    background-color: var(--success-soft);
+    color: var(--success);
+}
+
+.log-amount.negative {
+    background-color: var(--danger-soft);
+    color: var(--danger);
+}
+
+/* --------------------------------------------------------------------------
+ *  9. لوحة قارئ QR الفائق السرعة (QR Scanner Panel)
+ *  -------------------------------------------------------------------------- */
+.qr-scanner-box {
+    background-color: var(--bg-muted);
+    border: 2px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+#qr-reader {
+width: 100%;
+max-width: 380px;
+margin: 0.75rem auto;
+border-radius: var(--radius-md);
+overflow: hidden;
+background-color: #000000;
+}
+
+.scanner-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    margin-bottom: 0.75rem;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--success);
+    margin-left: 0.4rem;
+    animation: pulseDot 1.4s infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(1.2); }
+}
+
+/* --------------------------------------------------------------------------
+ *  10. استوديو تصميم البطاقات والـ PDF (Cards Studio & Canvas)
+ *  -------------------------------------------------------------------------- */
+.studio-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.studio-panel {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.studio-panel h3 {
+    font-size: 1.08rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--primary-hover);
+}
+
+.control-block {
+    background-color: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+.control-block h4 {
+    font-size: 0.94rem;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+    color: var(--text-main);
+}
+
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.65rem;
+}
+
+.canvas-preview-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.canvas-pair {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem;
+    width: 100%;
+}
+
+.canvas-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.canvas-wrapper span {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.card-canvas {
+    border: 2px solid var(--primary-border);
+    border-radius: var(--radius-sm);
+    background-color: #ffffff;
+    box-shadow: var(--shadow-md);
+    max-width: 100%;
+    height: auto;
+}
+
+.students-checklist {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-muted);
+    padding: 0.65rem;
+    margin: 0.75rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.45rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+}
+
+/* --------------------------------------------------------------------------
+ *  11. النماذج والحقول (Forms & Inputs)
+ *  -------------------------------------------------------------------------- */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--primary);
+}
+
+input[type="color"] {
+    width: 100%;
+    height: 38px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-input);
+    padding: 2px;
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+ *  12. الإعدادات والثيمات والنسخ الاحتياطي (Settings & Themes)
+ *  -------------------------------------------------------------------------- */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+}
+
+.settings-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.35rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+}
+
+.settings-card p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.1rem;
+}
+
+.theme-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.theme-option-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-muted);
+    color: var(--text-main);
+    font-weight: 700;
+    transition: all var(--transition);
+}
+
+.theme-option-btn.active {
+    border-color: var(--primary);
+    background-color: var(--primary-soft);
+}
+
+.theme-swatch-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.mode-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background-color: var(--bg-muted);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+ *  13. النوافذ المنبثقة (Modals) - تدعم التراكب المتتالي
+ *  -------------------------------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(2, 20, 14, 0.65);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+/* النافذة المنبثقة الثانية المتتالية تظهر فوق الأولى */
+.modal-overlay.modal-level-2 {
+    z-index: 1100;
+    background-color: rgba(2, 20, 14, 0.75);
+}
+
+.modal-box {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 540px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: modalScale 0.2s ease-out;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-box.modal-lg {
+    max-width: 720px;
+}
+
+@keyframes modalScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--bg-muted);
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+
+.modal-close:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.modal-body {
+    padding: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+/* --------------------------------------------------------------------------
+ *  14. إشعارات Toast السفلية الفورية غير المعطلة للعمل
+ *  -------------------------------------------------------------------------- */
+.toast-container {
+    position: fixed;
+    bottom: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 92%;
+    max-width: 440px;
+    pointer-events: none;
+}
+
+.toast-item {
+    width: 100%;
+    padding: 0.8rem 1.1rem;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border-right: 5px solid var(--primary);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: 0.94rem;
+    animation: toastSlideUp 0.2s ease-out;
+    border-top: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.toast-item.toast-error {
+    border-right-color: var(--danger);
+}
+
+.toast-item.toast-warning {
+    border-right-color: var(--warning);
+}
+
+@keyframes toastSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --------------------------------------------------------------------------
+ *  15. التجاوب مع الشاشات والجوال (Responsive Design)
+ *  -------------------------------------------------------------------------- */
+@media (max-width: 992px) {
+    .studio-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-container {
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* تحويل شريط التنقل إلى شريط سفلي ثابت في الجوال لسهولة الاستخدام بيد واحدة */
+    .main-nav {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        background-color: var(--bg-card);
+        border-top: 1px solid var(--border-color);
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        padding: 0.4rem 0.5rem;
+        justify-content: space-around;
+        z-index: 900;
+    }
+
+    .nav-tab {
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.45rem 0.5rem;
+        font-size: 0.75rem;
+        flex: 1;
+        text-align: center;
+    }
+
+    .nav-tab .tab-icon {
+        font-size: 1.2rem;
+    }
+
+    .leaderboard-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .points-score-box {
+        justify-content: center;
+    }
+}
