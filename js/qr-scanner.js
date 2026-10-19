@@ -1,169 +1,162 @@
 /**
- * منطق قارئ الـ QR الفائق السرعة (qr-scanner.js) - شباب مسجد قطنا
- * يعمل بأسلوب السوبر ماركت دون إغلاق الكاميرا بعد القراءة، ويدعم:
- * 1. الكاميرا بوضع القراءة المستمرة عبر مكتبة html5-qrcode (fps: 15, qrbox: { width: 250, height: 250 }).
- * 2. قارئ الباركود الليزري الخارجي (Hardware Scanner / Keyboard Wedge) عبر مستمع keypress مع مؤقت تصفير 50ms.
- * 3. صوت "بيب" فوري عبر Web Audio API (تردد 1500Hz لمدة 100ms) بدون ملفات خارجية.
- * 4. مهلة منع تكرار (Cooldown لمدة 2000ms لنفس الكود lastScanned) وإشعار Toast لمدة ثانيتين (2000ms).
+ * جلسة الحضور والغياب بكاميرا الموبايل (qr-scanner.js) - شباب مسجد قطنا
+ * - قراءة مستمرة بدون إيقاف الكاميرا بين بطاقة وأخرى (15 FPS).
+ * - كل بطاقة ممسوحة = طالب حاضر (تُجمع في الجلسة، ولا تُطبَّق النقاط فوراً).
+ * - عند "إنهاء الجلسة": إضافة نقاط الحضور مع السبب لكل الحاضرين، وخصم نقاط الغياب
+ *   مع سببها من بقية طلاب الحلقة (إلا إذا كانت نقاط الخصم 0).
+ * - الجلسة تبقى محفوظة في الذاكرة عند إغلاق النافذة، حتى الإنهاء أو الإلغاء.
  */
-
 const QRScanner = {
   html5QrCodeInstance: null,
   isCameraRunning: false,
   audioCtx: null,
-
-  // متغيرات منع التكرار (Cooldown 2000ms) وإحصائية الجلسة
-  lastScanned: {
-    code: null,
-    timestamp: 0
-  },
+  lastScanned: { code: null, timestamp: 0 },
   cooldownMs: 2000,
-  sessionScanCount: 0,
-
-  // متغيرات قارئ الليزر الخارجي (Keyboard Wedge)
-  wedgeBuffer: '',
-  wedgeTimeoutId: null,
-  wedgeResetDelayMs: 50,
+  presentIds: [], // معرّفات الحاضرين بترتيب المسح
 
   init() {
     this.bindEvents();
-    this.initHardwareKeyboardWedgeListener();
   },
 
-  /* ========================================================================
-     1. ربط أحداث نافذة الماسح وأزرار الكاميرا
-     ======================================================================== */
-
   bindEvents() {
-    // زر فتح نافذة الماسح السريع من واجهة إدارة النقاط
-    const openScannerBtn = document.getElementById('btn-open-qr-scanner');
-    if (openScannerBtn) {
-      openScannerBtn.addEventListener('click', () => {
-        this.openScannerModal();
-      });
-    }
+    const on = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', fn);
+    };
+    on('btn-open-qr-scanner', () => this.openScannerModal());
+    on('btn-start-camera-scan', () => this.startCamera());
+    on('btn-stop-camera-scan', () => this.stopCamera());
+    on('btn-finish-attendance', () => this.finishSession());
 
-    // زر تشغيل الكاميرا
-    const startCamBtn = document.getElementById('btn-start-camera-scan');
-    if (startCamBtn) {
-      startCamBtn.addEventListener('click', () => {
-        this.startCamera();
-      });
-    }
+    // تغيير الحلقة يعيد حساب الغائبين المتوقعين
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.id === 'qr-circle') this.renderSessionPanel();
+    });
 
-    // زر إيقاف الكاميرا
-    const stopCamBtn = document.getElementById('btn-stop-camera-scan');
-    if (stopCamBtn) {
-      stopCamBtn.addEventListener('click', () => {
-        this.stopCamera();
-      });
-    }
-
-    // تحديث السبب التلقائي عند تغيير نوع العملية بين (حضور/إضافة) و (غياب/خصم)
-    const opTypeSelect = document.getElementById('qr-operation-type');
-    if (opTypeSelect) {
-      opTypeSelect.addEventListener('change', (e) => {
-        const reasonInput = document.getElementById('qr-points-reason');
-        if (!reasonInput) return;
-        if (
-          e.target.value === 'deduct' &&
-          reasonInput.value.trim() === 'تسجيل حضور عبر بطاقة QR'
-        ) {
-          reasonInput.value = 'خصم غياب عبر مسح QR';
-        } else if (
-          e.target.value === 'add' &&
-          reasonInput.value.trim() === 'خصم غياب عبر مسح QR'
-        ) {
-          reasonInput.value = 'تسجيل حضور عبر بطاقة QR';
+    // حذف حاضر بالخطأ أو إلغاء الجلسة (من لوحة الجلسة)
+    const panel = document.getElementById('qr-session-panel');
+    if (panel) {
+      panel.addEventListener('click', (e) => {
+        const rm = e.target.closest('[data-remove-id]');
+        if (rm) {
+          this.presentIds = this.presentIds.filter((id) => id !== rm.getAttribute('data-remove-id'));
+          this.renderSessionPanel();
+        } else if (e.target.closest('#btn-clear-session')) {
+          if (this.presentIds.length && !window.confirm('إلغاء الجلسة ومسح كل الحاضرين الممسوحين؟')) return;
+          this.presentIds = [];
+          this.renderSessionPanel();
         }
       });
     }
   },
 
   openScannerModal() {
-    this.sessionScanCount = 0;
-    this.lastScanned = { code: null, timestamp: 0 };
-    this.updateSessionCounterUI();
-
+    UI.fillAttendanceCircles('qr');
     UI.openModal('modal-qr-scanner');
-
-    // تهيئة سياق الصوت مبكراً عند تفاعل المستخدم
     this.ensureAudioContext();
-
-    // بدء تشغيل الكاميرا تلقائياً فور فتح النافذة لتوفير الوقت
-    this.startCamera();
+    this.renderSessionPanel();
+    this.startCamera(); // الجلسة السابقة (إن وُجدت) تبقى كما هي
   },
 
   onScannerModalClosed() {
     this.stopCamera();
   },
 
-  updateSessionCounterUI() {
-    const counterEl = document.getElementById('qr-session-counter');
-    if (counterEl) {
-      counterEl.textContent = `إجمالي العمليات في هذه الجلسة: ${this.sessionScanCount}`;
+  /* ===== لوحة الجلسة: الحاضرون والغائبون المتوقعون ===== */
+  renderSessionPanel() {
+    const panel = document.getElementById('qr-session-panel');
+    const counter = document.getElementById('qr-session-counter');
+    if (!panel) return;
+
+    const circleSel = document.getElementById('qr-circle');
+    const circleId = circleSel ? circleSel.value : '';
+    const present = this.presentIds.map((id) => DB.getStudentById(id)).filter(Boolean);
+    const presentSet = new Set(present.map((s) => s.id));
+    const absent = circleId
+      ? DB.getStudents({ circleId, sortAlphabetically: true }).filter((s) => !presentSet.has(s.id))
+      : [];
+
+    const chips = present
+      .map(
+        (s) => `<span style="display:inline-flex;align-items:center;gap:.35rem;background:var(--primary-soft);border:1px solid var(--primary-border);border-radius:999px;padding:.15rem .6rem;margin:.15rem;font-size:.85rem;">
+          ${UI.escapeHtml(s.name)} <button type="button" data-remove-id="${UI.escapeHtml(s.id)}" aria-label="إزالة" style="border:none;background:none;cursor:pointer;color:inherit;">✕</button></span>`
+      )
+      .join('');
+    const absentNames = absent.slice(0, 12).map((s) => UI.escapeHtml(s.name)).join('، ');
+
+    panel.innerHTML = `
+      <div style="margin-top:.75rem;">
+        <strong>✅ الحاضرون (${present.length})</strong>
+        <div>${chips || '<span style="color:var(--text-secondary);font-size:.85rem;">لم يُمسح أي طالب بعد</span>'}</div>
+      </div>
+      <div style="margin-top:.6rem;font-size:.88rem;color:var(--text-secondary);">
+        ❌ الغائبون المتوقعون: <strong>${circleId ? absent.length : '—'}</strong>
+        ${circleId ? (absentNames ? '(' + absentNames + (absent.length > 12 ? '…' : '') + ')' : '') : '(اختر الحلقة لعرضهم)'}
+      </div>
+      ${present.length ? '<button type="button" id="btn-clear-session" class="btn btn-sm btn-danger-outline" style="margin-top:.5rem;">إلغاء الجلسة</button>' : ''}`;
+
+    if (counter) counter.textContent = `الحاضرون في الجلسة: ${present.length}`;
+  },
+
+  /* ===== إنهاء الجلسة وتطبيق النقاط ===== */
+  finishSession() {
+    const cfg = UI.readAttendanceFields('qr');
+    try {
+      const preview = DB.applyAttendanceSession({ ...cfg, presentTokens: this.presentIds, dryRun: true });
+      const lines = [];
+      if (cfg.presentPoints > 0) {
+        lines.push(`➕ ${cfg.presentPoints} نقطة لـ ${preview.presentCount} حاضر (السبب: ${cfg.presentReason})`);
+      }
+      if (cfg.absentPoints > 0) {
+        lines.push(`➖ ${cfg.absentPoints} نقطة من ${preview.absentCount} غائب (السبب: ${cfg.absentReason})`);
+      }
+      if (!window.confirm('تأكيد إنهاء الجلسة:\n' + lines.join('\n'))) return;
+
+      const result = DB.applyAttendanceSession({ ...cfg, presentTokens: this.presentIds });
+      this.presentIds = [];
+      this.renderSessionPanel();
+      if (window.PointsView) window.PointsView.renderLeaderboard();
+      UI.closeModal('modal-qr-scanner');
+      this.stopCamera();
+      UI.showToast(`تم تطبيق الجلسة: ${result.presentCount} حاضر • ${result.absentCount} غائب`, 'success', 3000);
+    } catch (err) {
+      UI.showToast(err.message || 'تعذر إنهاء الجلسة', 'error', 3000);
     }
   },
 
-  /* ========================================================================
-     2. تشغيل وإيقاف كاميرا الـ QR بوضع القراءة المستمرة (html5-qrcode)
-     ======================================================================== */
-
+  /* ===== الكاميرا: قراءة مستمرة بدون إغلاق بعد كل بطاقة ===== */
   async startCamera() {
     if (this.isCameraRunning) return;
-
     const statusText = document.getElementById('qr-scanner-status-text');
     const startBtn = document.getElementById('btn-start-camera-scan');
     const stopBtn = document.getElementById('btn-stop-camera-scan');
 
     if (typeof Html5Qrcode === 'undefined') {
-      if (statusText) {
-        statusText.textContent = 'مكتبة الكاميرا غير محملة، قارئ الليزر الخارجي يعمل بشكل طبيعي';
-      }
-      UI.showToast('تأكد من وجود ملف libs/html5-qrcode.min.js لتشغيل الكاميرا', 'warning', 3000);
+      if (statusText) statusText.textContent = 'مكتبة الكاميرا غير محملة';
+      UI.showToast('تأكد من وجود ملف libs/html5-qrcode.min.js', 'warning', 3000);
       return;
     }
 
     try {
       this.ensureAudioContext();
-
-      if (!this.html5QrCodeInstance) {
-        this.html5QrCodeInstance = new Html5Qrcode('qr-reader');
-      }
-
-      const config = {
-        fps: 15,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      };
-
+      if (!this.html5QrCodeInstance) this.html5QrCodeInstance = new Html5Qrcode('qr-reader');
       await this.html5QrCodeInstance.start(
         { facingMode: 'environment' },
-        config,
-        (decodedText) => {
-          // القراءة المستمرة دون إيقاف الكاميرا
-          this.handleScannedCode(decodedText, 'camera');
-        },
-        () => {
-          // تجاهل أخطاء الإطارات الفارغة أثناء البحث المستمر عن رمز QR
-        }
+        { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        (decodedText) => this.handleScannedCode(decodedText),
+        () => {} // تجاهل الإطارات الفارغة أثناء البحث المستمر
       );
-
       this.isCameraRunning = true;
       if (startBtn) startBtn.style.display = 'none';
       if (stopBtn) stopBtn.style.display = 'inline-flex';
-      if (statusText) {
-        statusText.textContent = 'الكاميرا نشطة بوضع المسح المستمر + قارئ الليزر جاهز';
-      }
+      if (statusText) statusText.textContent = 'الكاميرا تعمل — وجّهها نحو البطاقات تباعاً دون توقف';
     } catch (err) {
       console.warn('[QRScanner] تعذر تشغيل الكاميرا:', err);
       this.isCameraRunning = false;
       if (startBtn) startBtn.style.display = 'inline-flex';
       if (stopBtn) stopBtn.style.display = 'none';
-      if (statusText) {
-        statusText.textContent = 'تعذر الوصول للكاميرا — قارئ الباركود الليزري جاهز للعمل';
-      }
-      UI.showToast('تعذر فتح الكاميرا (تحقق من صلاحية الكاميرا أو استخدم قارئ الليزر)', 'warning', 2800);
+      if (statusText) statusText.textContent = 'تعذر الوصول للكاميرا — تحقق من الصلاحية';
+      UI.showToast('تعذر فتح الكاميرا (تحقق من صلاحية الكاميرا في المتصفح)', 'warning', 3000);
     }
   },
 
@@ -171,7 +164,6 @@ const QRScanner = {
     const startBtn = document.getElementById('btn-start-camera-scan');
     const stopBtn = document.getElementById('btn-stop-camera-scan');
     const statusText = document.getElementById('qr-scanner-status-text');
-
     if (this.html5QrCodeInstance && this.isCameraRunning) {
       try {
         await this.html5QrCodeInstance.stop();
@@ -180,155 +172,52 @@ const QRScanner = {
         console.warn('[QRScanner] تنبيه أثناء إيقاف الكاميرا:', err);
       }
     }
-
     this.isCameraRunning = false;
     if (startBtn) startBtn.style.display = 'inline-flex';
     if (stopBtn) stopBtn.style.display = 'none';
-    if (statusText) {
-      statusText.textContent = 'قارئ الليزر الخارجي (USB/Wireless) جاهز للاستقبال الفوري';
-    }
+    if (statusText) statusText.textContent = 'الكاميرا متوقفة';
   },
 
-  /* ========================================================================
-     3. مستمع قارئ الباركود الخارجي (Hardware Scanner / Keyboard Wedge)
-     ======================================================================== */
+  /* ===== معالجة كل بطاقة: تسجيل حضور فقط (النقاط تُطبّق عند الإنهاء) ===== */
+  handleScannedCode(rawCode) {
+    const code = String(rawCode || '').trim().toUpperCase();
+    if (!code) return;
 
-  initHardwareKeyboardWedgeListener() {
-    document.addEventListener('keypress', (e) => {
-      // تجاهل الالتقاط إذا كان المستخدم يكتب يدوياً داخل حقل إدخال نصي أو textarea
-      const activeEl = document.activeElement;
-      const isTypingInField =
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          activeEl.isContentEditable);
-
-      if (isTypingInField) {
-        return;
-      }
-
-      // يعمل قارئ الليزر عندما تكون نافذة الماسح مفتوحة أو عندما يكون المستخدم داخل واجهة إدارة النقاط
-      const qrModal = document.getElementById('modal-qr-scanner');
-      const pointsSection = document.getElementById('view-points');
-      const isScannerModalOpen = qrModal && qrModal.classList.contains('active');
-      const isPointsViewActive = pointsSection && pointsSection.classList.contains('active');
-
-      if (!isScannerModalOpen && !isPointsViewActive) {
-        return;
-      }
-
-      if (this.wedgeTimeoutId) {
-        clearTimeout(this.wedgeTimeoutId);
-      }
-
-      if (e.key === 'Enter') {
-        const scannedCode = this.wedgeBuffer.trim();
-        this.wedgeBuffer = '';
-        if (scannedCode.length >= 3) {
-          e.preventDefault();
-          this.handleScannedCode(scannedCode, 'laser');
-        }
-        return;
-      }
-
-      // تجميع الأحرف المطبوعة بسرعة فائقة من قارئ الليزر
-      if (e.key && e.key.length === 1) {
-        this.wedgeBuffer += e.key;
-      }
-
-      // مؤقت تصفير 50ms لمنع تداخل ضغطات لوحة المفاتيح اليدوية البطيئة
-      this.wedgeTimeoutId = setTimeout(() => {
-        this.wedgeBuffer = '';
-      }, this.wedgeResetDelayMs);
-    });
-  },
-
-  /* ========================================================================
-     4. معالجة الكود الممسوح، منع التكرار (Cooldown 2s)، وصوت Beep (1500Hz / 100ms)
-     ======================================================================== */
-
-  handleScannedCode(rawCode, source = 'camera') {
-    const cleanCode = String(rawCode || '').trim().toUpperCase();
-    if (!cleanCode) return;
-
+    // مهلة ثانيتين لنفس الكود حتى لا يتكرر الصوت والإشعار والكاميرا ما زالت على البطاقة
     const now = Date.now();
+    if (this.lastScanned.code === code && now - this.lastScanned.timestamp < this.cooldownMs) return;
+    this.lastScanned = { code, timestamp: now };
 
-    // التحقق من مهلة منع التكرار (Cooldown لمدة ثانيتين 2000ms لنفس الكود)
-    if (
-      this.lastScanned.code === cleanCode &&
-      now - this.lastScanned.timestamp < this.cooldownMs
-    ) {
+    const student = DB.getStudentById(code);
+    if (!student) {
+      UI.showToast(`الكود (${code}) غير مسجل لأي طالب!`, 'error', 2000);
+      return;
+    }
+    if (this.presentIds.includes(student.id)) {
+      UI.showToast(`${student.name} مسجل حاضراً مسبقاً`, 'warning', 2000);
       return;
     }
 
-    this.lastScanned = {
-      code: cleanCode,
-      timestamp: now
-    };
+    this.presentIds.push(student.id);
+    this.playBeepSound();
+    this.renderSessionPanel();
 
-    // قراءة إعدادات العملية الحالية من واجهة الماسح
-    const opTypeEl = document.getElementById('qr-operation-type');
-    const amountEl = document.getElementById('qr-points-amount');
-    const reasonEl = document.getElementById('qr-points-reason');
-
-    const operationType = opTypeEl ? opTypeEl.value : 'add';
-    const pointsAmount = amountEl ? Math.abs(Number(amountEl.value)) || 5 : 5;
-    const reason =
-      reasonEl && reasonEl.value.trim()
-        ? reasonEl.value.trim()
-        : operationType === 'deduct'
-        ? 'خصم غياب عبر مسح QR'
-        : 'تسجيل حضور عبر بطاقة QR';
-
-    try {
-      const result = DB.modifyStudentPoints(cleanCode, pointsAmount, operationType, reason);
-
-      // إصدار صوت البيب الفوري (1500Hz لمدة 100ms)
-      this.playBeepSound();
-
-      // زيادة عداد الجلسة وتحديث جدول المراكز خلف النافذة فوراً
-      this.sessionScanCount++;
-      this.updateSessionCounterUI();
-
-      if (window.PointsView) {
-        window.PointsView.renderLeaderboard();
-      }
-
-      const signStr =
-        result.logEntry.change >= 0
-          ? `+${result.logEntry.change}`
-          : `${result.logEntry.change}`;
-
-      // إظهار إشعار Toast سفلي غير معطل للعمل لمدة ثانيتين (2000ms)
-      UI.showToast(
-        `[${result.student.id}] ${result.student.name} (${signStr} نقطة) • الرصيد: ${result.student.points}`,
-        result.logEntry.change >= 0 ? 'success' : 'warning',
-        2000
-      );
-    } catch (err) {
-      // في حال مسح بطاقة غير مسجلة في النظام
-      UI.showToast(
-        `الكود (${cleanCode}) غير مسجل لأي طالب في النظام!`,
-        'error',
-        2000
-      );
-    }
+    const circleSel = document.getElementById('qr-circle');
+    const otherCircle = circleSel && circleSel.value && circleSel.value !== student.circleId;
+    UI.showToast(
+      `[${student.id}] ${student.name} ✔ حاضر${otherCircle ? ' (من حلقة أخرى)' : ''}`,
+      otherCircle ? 'warning' : 'success',
+      2000
+    );
   },
 
-  /* ========================================================================
-     5. توليد صوت "بيب" فوري عبر Web Audio API (1500Hz لمدة 100ms)
-     ======================================================================== */
-
+  /* ===== صوت بيب (1500Hz لمدة 100ms) ===== */
   ensureAudioContext() {
     try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return null;
-      if (!this.audioCtx) {
-        this.audioCtx = new AudioContextClass();
-      }
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!this.audioCtx) this.audioCtx = new Ctx();
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
       return this.audioCtx;
     } catch (e) {
       return null;
@@ -339,21 +228,16 @@ const QRScanner = {
     try {
       const ctx = this.ensureAudioContext();
       if (!ctx) return;
-
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(1500, ctx.currentTime); // تردد 1500Hz كما هو محدد
-
-      gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.1); // لمدة 100ms (0.1 ثانية)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1500, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.1);
     } catch (err) {
       console.warn('[QRScanner] تعذر تشغيل نغمة Beep:', err);
     }

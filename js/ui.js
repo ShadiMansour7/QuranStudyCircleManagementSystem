@@ -5,6 +5,97 @@
  */
 
 const UI = {
+  /* ===== حقول الحضور والغياب المشتركة (الماسح + الإدخال اليدوي) ===== */
+  mountAttendanceFields(prefix) {
+    const host = document.getElementById(`${prefix}-attendance-settings`);
+    if (!host) return;
+    const group = (id, label, type, extra) =>
+      `<div class="form-group" style="margin-bottom: 0;"><label class="form-label" for="${prefix}-${id}">${label}</label><input id="${prefix}-${id}" class="form-control" ${type} ${extra}></div>`;
+    host.innerHTML = `
+      <div class="form-group">
+        <label class="form-label" for="${prefix}-circle">الحلقة (لتحديد الغائبين) *</label>
+        <select id="${prefix}-circle" class="form-control"></select>
+      </div>
+      <div style="background: var(--primary-soft); border: 1px solid var(--primary-border); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.75rem;">
+        <strong>✅ الحاضرون: إضافة نقاط</strong>
+        <div class="control-grid" style="margin-top: 0.5rem;">
+          ${group('present-amount', 'عدد النقاط', 'type="number" min="0" max="1000"', 'value="5"')}
+          ${group('present-reason', 'السبب (يُدرج لكل حاضر)', 'type="text"', 'value="حضور"')}
+        </div>
+      </div>
+      <div style="background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.3); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.75rem;">
+        <strong>❌ الغائبون: خصم نقاط (اتركها 0 لعدم الخصم)</strong>
+        <div class="control-grid" style="margin-top: 0.5rem;">
+          ${group('absent-amount', 'عدد النقاط المخصومة', 'type="number" min="0" max="1000"', 'value="0"')}
+          ${group('absent-reason', 'السبب (يُدرج لكل غائب)', 'type="text"', 'value="غياب"')}
+        </div>
+      </div>`;
+    this.fillAttendanceCircles(prefix);
+  },
+
+  /** نافذة اختيار طريقة الاستيراد (تُبنى برمجياً): تعيد 'merge' أو 'replace' أو null عند الإلغاء */
+  askImportMode(imported) {
+    const cur = DB.getData();
+    let modal = document.getElementById('modal-import-choice');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'modal-import-choice';
+      modal.setAttribute('aria-hidden', 'true');
+      modal.innerHTML = `<div class="modal-box">
+        <div class="modal-header"><h3 class="modal-title">⬆️ استيراد نسخة احتياطية</h3>
+          <button type="button" class="modal-close" data-close-modal="modal-import-choice">&times;</button></div>
+        <div class="modal-body"><p id="import-choice-summary" style="line-height:1.9;margin:0;"></p></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-import-cancel">إلغاء</button>
+          <button type="button" class="btn btn-danger" id="btn-import-replace">♻️ استبدال الكل</button>
+          <button type="button" class="btn btn-primary" id="btn-import-merge">🔗 دمج مع الحالي</button>
+        </div></div>`;
+      document.body.appendChild(modal);
+    }
+    modal.querySelector('#import-choice-summary').innerHTML =
+      `الملف: <strong>${imported.circles.length}</strong> حلقة و<strong>${imported.students.length}</strong> طالب.<br>` +
+      `بياناتك الحالية: <strong>${cur.circles.length}</strong> حلقة و<strong>${cur.students.length}</strong> طالب.<br>` +
+      `<small>الدمج يُبقي بياناتك ويضيف الجديد فقط. الاستبدال يمسح كل شيء ويضع محتوى الملف.</small>`;
+    return new Promise((resolve) => {
+      const done = (mode) => { this.closeModal('modal-import-choice'); resolve(mode); };
+      modal.querySelector('#btn-import-merge').onclick = () => done('merge');
+      modal.querySelector('#btn-import-cancel').onclick = () => done(null);
+      modal.querySelector('#btn-import-replace').onclick = () => {
+        if (window.confirm('سيتم مسح كل البيانات الحالية نهائياً واستبدالها بالملف. هل أنت متأكد؟')) done('replace');
+      };
+      this.openModal('modal-import-choice');
+    });
+  },
+
+  fillAttendanceCircles(prefix) {
+    const sel = document.getElementById(`${prefix}-circle`);
+    if (!sel) return;
+    const current = sel.value;
+    const circles = DB.getCircles();
+    sel.innerHTML = '<option value="">— اختر الحلقة —</option>';
+    circles.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+    if (current && circles.some((c) => c.id === current)) sel.value = current;
+    else if (circles.length === 1) sel.value = circles[0].id;
+  },
+
+  readAttendanceFields(prefix) {
+    const val = (id) => (document.getElementById(`${prefix}-${id}`) || {}).value || '';
+    const amt = (v) => Math.abs(Number(v)) || 0;
+    return {
+      circleId: val('circle'),
+      presentPoints: amt(val('present-amount')),
+      presentReason: val('present-reason').trim(),
+      absentPoints: amt(val('absent-amount')),
+      absentReason: val('absent-reason').trim()
+    };
+  },
+
   /**
    * تهيئة كافة عناصر الواجهة والأحداث العامة
    */
@@ -14,6 +105,8 @@ const UI = {
     this.bindModalCloseEvents();
     this.bindThemeAndModeControls();
     this.bindBackupExportImport();
+    this.mountAttendanceFields('qr');
+    this.mountAttendanceFields('batch');
     this.registerServiceWorker();
   },
 
@@ -35,7 +128,12 @@ const UI = {
       const themeColors = {
         emerald: '#059669',
         forest: '#15803d',
-        olive: '#4d7c0f'
+        olive: '#4d7c0f',
+        sage: '#3d7a5a',
+        mint: '#247d5d',
+        moss: '#4a7a3a',
+        pine: '#1f6f5c',
+        mist: '#2f855a'
       };
       themeMeta.setAttribute('content', themeColors[theme] || '#059669');
     }
@@ -56,7 +154,7 @@ const UI = {
   },
 
   setTheme(themeName) {
-    const validThemes = ['emerald', 'forest', 'olive'];
+    const validThemes = ['emerald', 'forest', 'olive', 'sage', 'mint', 'moss', 'pine', 'mist'];
     const selected = validThemes.includes(themeName) ? themeName : 'emerald';
     DB.updateSettings({ theme: selected });
     this.applySavedThemeAndMode();
@@ -64,7 +162,12 @@ const UI = {
     const namesAr = {
       emerald: 'الأخضر الزمردي',
       forest: 'أخضر الغابات',
-      olive: 'الأخضر الزيتوني الهادئ'
+      olive: 'الأخضر الزيتوني الهادئ',
+      sage: 'سيج وجرافيت',
+      mint: 'نعناع وحجر',
+      moss: 'طحلب وفحم',
+      pine: 'صنوبر وفضي',
+      mist: 'تدرج الضباب'
     };
     this.showToast(`تم تفعيل ثيم: ${namesAr[selected]}`, 'success');
   },
@@ -303,16 +406,28 @@ const UI = {
         const reader = new FileReader();
         reader.onload = (loadEvent) => {
           try {
-            const content = String(loadEvent.target.result || '');
-            DB.importDatabaseFromJsonString(content);
-            this.applySavedThemeAndMode();
-
-            // تحديث جميع الواجهات فوراً بعد الاستيراد
-            if (window.StudentsView) window.StudentsView.refreshAll();
-            if (window.PointsView) window.PointsView.refreshAll();
-            if (window.CardsPDF) window.CardsPDF.refreshAll();
-
-            this.showToast('تم استيراد البيانات وتحديث النظام بنجاح!', 'success', 2800);
+            const imported = DB.parseBackupString(String(loadEvent.target.result || ''));
+            this.askImportMode(imported).then((mode) => {
+              if (!mode) return;
+              try {
+                let msg = 'تم استبدال البيانات بالكامل';
+                if (mode === 'replace') {
+                  DB.replaceAllData(imported);
+                } else {
+                  const r = DB.mergeImportedData(imported);
+                  msg = `تم الدمج: +${r.addedStudents} طالب، +${r.addedCircles} حلقة` +
+                    (r.skippedDuplicates ? ` • ${r.skippedDuplicates} مكرر تم تخطيه` : '') +
+                    (r.renumbered ? ` • ${r.renumbered} أُعطوا معرّفات جديدة` : '');
+                }
+                this.applySavedThemeAndMode();
+                if (window.StudentsView) window.StudentsView.refreshAll();
+                if (window.PointsView) window.PointsView.refreshAll();
+                if (window.CardsPDF) window.CardsPDF.refreshAll();
+                this.showToast(msg, 'success', 4500);
+              } catch (err) {
+                this.showToast(err.message || 'فشل تطبيق الاستيراد', 'error', 3500);
+              }
+            });
           } catch (err) {
             this.showToast(err.message || 'فشل استيراد الملف النصي', 'error', 3500);
           }

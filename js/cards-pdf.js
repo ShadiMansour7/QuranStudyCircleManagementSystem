@@ -28,15 +28,20 @@ const CardsPDF = {
   },
 
   init() {
+    this.mountStudioExtras();
     this.loadSavedDesignIntoInputs();
+    this.syncStudioControls();
     this.bindEvents();
     this.refreshAll();
+    this.loadFonts();
   },
 
   /**
    * تحديث قوائم الحلقات والطلاب والمعاينة الحية على الـ Canvas
    */
   refreshAll() {
+    this.loadSavedDesignIntoInputs();
+    this.syncStudioControls();
     this.populateCircleFilter();
     this.populatePreviewStudentSelect();
     this.renderStudentsChecklist();
@@ -47,35 +52,24 @@ const CardsPDF = {
      1. قراءة وحفظ إعدادات التصميم والإحداثيات من وإلى قاعدة البيانات
      ======================================================================== */
 
-  getDefaultDesign() {
+  getDefaultDesign(orientation) {
+    if ((orientation || this.getOrientation()) === 'landscape') {
+      // بطاقة عرضية 440×310
+      return {
+        front: { nameX: 220, nameY: 100, nameSize: 22, nameColor: '#0f172a', ageX: 220, ageY: 135, ageSize: 16, ageColor: '#334155', qrX: 160, qrY: 165, qrSize: 125 },
+        back: { mosqueName: 'شباب مسجد قطنا', mosqueX: 220, mosqueY: 160, mosqueSize: 28, mosqueColor: '#059669' }
+      };
+    }
+    // بطاقة طولية 310×440
     return {
-      front: {
-        nameX: 155,
-        nameY: 160,
-        nameSize: 22,
-        nameColor: '#0f172a',
-        ageX: 155,
-        ageY: 200,
-        ageSize: 16,
-        ageColor: '#334155',
-        qrX: 80,
-        qrY: 235,
-        qrSize: 150
-      },
-      back: {
-        mosqueName: 'شباب مسجد قطنا',
-        mosqueX: 155,
-        mosqueY: 220,
-        mosqueSize: 24,
-        mosqueColor: '#059669'
-      }
+      front: { nameX: 155, nameY: 160, nameSize: 22, nameColor: '#0f172a', ageX: 155, ageY: 200, ageSize: 16, ageColor: '#334155', qrX: 80, qrY: 235, qrSize: 150 },
+      back: { mosqueName: 'شباب مسجد قطنا', mosqueX: 155, mosqueY: 220, mosqueSize: 24, mosqueColor: '#059669' }
     };
   },
 
   loadSavedDesignIntoInputs() {
-    const saved = DB.getCardDesign() || this.getDefaultDesign();
-    const front = saved.front || this.getDefaultDesign().front;
-    const back = saved.back || this.getDefaultDesign().back;
+    this.flushDesignSave(); // لا نكتب فوق تعديل لم يُحفظ بعد
+    const { front, back } = this.getActiveLayout();
 
     this._setInputValue('cfg-name-x', front.nameX);
     this._setInputValue('cfg-name-y', front.nameY);
@@ -135,7 +129,40 @@ const CardsPDF = {
 
   saveCurrentConfigToDB() {
     const { front, back } = this.readCurrentConfigFromInputs();
-    DB.saveCardDesign(front, back);
+    const studio = this.getStudio();
+    studio.layouts[studio.orientation] = { front, back };
+    this.saveStudio(studio);
+  },
+
+  // حفظ مؤجَّل (400ms بعد آخر حركة) كي لا تُكتب القاعدة كلها مع كل نبضة سلايدر
+  _saveTimer: null,
+
+  scheduleDesignSave() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this._safeSaveDesign();
+    }, 400);
+  },
+
+  flushDesignSave() {
+    if (this._saveTimer === null) return;
+    clearTimeout(this._saveTimer);
+    this._saveTimer = null;
+    this._safeSaveDesign();
+  },
+
+  cancelDesignSave() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = null;
+  },
+
+  _safeSaveDesign() {
+    try {
+      this.saveCurrentConfigToDB();
+    } catch (err) {
+      UI.showToast(err.message || 'تعذر حفظ تصميم البطاقة', 'error', 3500);
+    }
   },
 
   /* ========================================================================
@@ -143,6 +170,12 @@ const CardsPDF = {
      ======================================================================== */
 
   bindEvents() {
+    // لا نفقد تعديلاً مؤجَّلاً عند إخفاء الصفحة أو إغلاقها
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.flushDesignSave();
+    });
+    window.addEventListener('pagehide', () => this.flushDesignSave());
+
     // مراقبة جميع حقول التحكم بالإحداثيات والأحجام والألوان لتحديث الـ Canvas فوراً
     const controlIds = [
       'cfg-name-x',
@@ -167,7 +200,7 @@ const CardsPDF = {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('input', () => {
-          this.saveCurrentConfigToDB();
+          this.scheduleDesignSave(); // الحفظ مؤجَّل؛ المعاينة فورية لأنها تقرأ من الحقول مباشرة
           this.renderLivePreview();
         });
       }
@@ -177,8 +210,11 @@ const CardsPDF = {
     const resetBtn = document.getElementById('btn-reset-card-design');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
+        this.cancelDesignSave();
         const defaults = this.getDefaultDesign();
-        DB.saveCardDesign(defaults.front, defaults.back);
+        const studio = this.getStudio();
+        studio.layouts[studio.orientation] = { front: defaults.front, back: defaults.back };
+        this.saveStudio(studio);
         this.loadSavedDesignIntoInputs();
         this.renderLivePreview();
         UI.showToast('تمت استعادة الإحداثيات والتصميم الافتراضي للبطاقة', 'success');
@@ -193,6 +229,7 @@ const CardsPDF = {
         if (!file) return;
         this.loadImageFile(file, (img) => {
           this.state.frontBgImage = img;
+          this.persistBackground('front', img);
           this.renderLivePreview();
           UI.showToast('تم تحميل خلفية الوجه الأمامي بنجاح', 'success');
         });
@@ -204,6 +241,7 @@ const CardsPDF = {
     if (clearFrontBtn) {
       clearFrontBtn.addEventListener('click', () => {
         this.state.frontBgImage = null;
+        this.persistBackground('front', null);
         const input = document.getElementById('card-front-bg-input');
         if (input) input.value = '';
         this.renderLivePreview();
@@ -218,6 +256,7 @@ const CardsPDF = {
         if (!file) return;
         this.loadImageFile(file, (img) => {
           this.state.backBgImage = img;
+          this.persistBackground('back', img);
           this.renderLivePreview();
           UI.showToast('تم تحميل خلفية الوجه الخلفي بنجاح', 'success');
         });
@@ -229,6 +268,7 @@ const CardsPDF = {
     if (clearBackBtn) {
       clearBackBtn.addEventListener('click', () => {
         this.state.backBgImage = null;
+        this.persistBackground('back', null);
         const input = document.getElementById('card-back-bg-input');
         if (input) input.value = '';
         this.renderLivePreview();
@@ -283,8 +323,207 @@ const CardsPDF = {
     const exportPdfBtn = document.getElementById('btn-export-cards-pdf');
     if (exportPdfBtn) {
       exportPdfBtn.addEventListener('click', () => {
+        this.flushDesignSave();
         this.exportSelectedCardsToDuplexPDF();
       });
+    }
+  },
+
+  /* ========================================================================
+     استوديو البطاقات: الاتجاه (طولي/عرضي) + الخطوط + حفظ الخلفيات
+     ======================================================================== */
+
+  FONTS: [
+    { id: 'system', label: 'خط النظام (افتراضي)', family: '' },
+    { id: 'tajawal', label: 'Tajawal', family: 'Tajawal', files: { 400: 'libs/fonts/Tajawal-Regular.woff2', 700: 'libs/fonts/Tajawal-Bold.woff2' } },
+    { id: 'cairo', label: 'Cairo', family: 'Cairo', files: { 400: 'libs/fonts/Cairo-Regular.woff2', 700: 'libs/fonts/Cairo-Bold.woff2' } },
+    { id: 'amiri', label: 'Amiri (نسخ تقليدي)', family: 'Amiri', files: { 400: 'libs/fonts/Amiri-Regular.woff2', 700: 'libs/fonts/Amiri-Bold.woff2' } }
+  ],
+  BG_KEY: 'qatana_card_bgs_v1', // الخلفيات خارج قاعدة البيانات الرئيسية كي لا تتضخم النسخ الاحتياطية
+  _fontReady: {},
+  _fontCss: '',
+  _orientation: '',
+
+  // حالة الاستوديو (الاتجاه والخط وتصميم كل اتجاه) محفوظة ضمن إعدادات DB فتدخل النسخ الاحتياطية
+  getStudio() {
+    const s = (DB.getSettings() || {}).cardStudio || {};
+    return {
+      orientation: s.orientation === 'landscape' ? 'landscape' : 'portrait',
+      fontId: s.fontId || 'tajawal',
+      layouts: s.layouts || {}
+    };
+  },
+
+  saveStudio(studio) {
+    DB.updateSettings({ cardStudio: studio });
+  },
+
+  getOrientation() {
+    return this._orientation || this.getStudio().orientation;
+  },
+
+  getDims() {
+    return this.getOrientation() === 'landscape' ? { w: 440, h: 310 } : { w: 310, h: 440 };
+  },
+
+  // التصميم الفعّال للاتجاه الحالي (التصميم القديم المحفوظ يُستخدم كتصميم الاتجاه الطولي)
+  getActiveLayout() {
+    const studio = this.getStudio();
+    const def = this.getDefaultDesign(studio.orientation);
+    let saved = studio.layouts[studio.orientation];
+    if (!saved && studio.orientation === 'portrait') saved = DB.getCardDesign();
+    return {
+      front: { ...def.front, ...((saved && saved.front) || {}) },
+      back: { ...def.back, ...((saved && saved.back) || {}) }
+    };
+  },
+
+  // إضافة خانة الاتجاه وقائمة الخطوط بجانب زر استعادة التصميم
+  mountStudioExtras() {
+    const resetBtn = document.getElementById('btn-reset-card-design');
+    if (!resetBtn || document.getElementById('cfg-card-landscape')) return;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.5rem 0;';
+    wrap.innerHTML = `
+      <label style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;font-weight:700;">
+        <input type="checkbox" id="cfg-card-landscape"> بطاقة عرضية (105×74.25 مم)
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:.4rem;">الخط
+        <select id="cfg-card-font" class="form-control" style="width:auto;"></select>
+      </label>
+      <small id="cfg-font-hint" style="color:var(--text-muted);"></small>`;
+    resetBtn.parentNode.insertBefore(wrap, resetBtn);
+    document.getElementById('cfg-card-landscape').addEventListener('change', (e) =>
+      this.applyOrientation(e.target.checked ? 'landscape' : 'portrait')
+    );
+    document.getElementById('cfg-card-font').addEventListener('change', (e) => this.applyFont(e.target.value));
+  },
+
+  // مزامنة الخانة والخط وحدود الإحداثيات والخلفيات مع الاتجاه المحفوظ
+  syncStudioControls() {
+    const studio = this.getStudio();
+    this._orientation = studio.orientation;
+    const cb = document.getElementById('cfg-card-landscape');
+    if (cb) cb.checked = studio.orientation === 'landscape';
+    this.fillFontSelect();
+    this._updateFontCss();
+    this.syncInputRanges();
+    this.loadBackgrounds();
+  },
+
+  syncInputRanges() {
+    const { w, h } = this.getDims();
+    ['name', 'age', 'qr', 'mosque'].forEach((k) => {
+      const x = document.getElementById(`cfg-${k}-x`);
+      const y = document.getElementById(`cfg-${k}-y`);
+      if (x) x.max = w;
+      if (y) y.max = h;
+    });
+  },
+
+  applyOrientation(orientation) {
+    this.flushDesignSave(); // تعديلات الاتجاه الحالي تُحفظ قبل التحويل
+    const studio = this.getStudio();
+    studio.orientation = orientation;
+    this.saveStudio(studio);
+    this._orientation = orientation;
+    this.loadSavedDesignIntoInputs();
+    this.syncInputRanges();
+    this.loadBackgrounds();
+    this.renderLivePreview();
+    UI.showToast(orientation === 'landscape' ? 'تم التحويل إلى البطاقة العرضية' : 'تم التحويل إلى البطاقة الطولية', 'success');
+  },
+
+  // تحميل الخطوط المحلية (libs/fonts) وإظهار المتوفر منها فقط
+  async loadFonts() {
+    for (const f of this.FONTS) {
+      if (!f.files) continue;
+      const results = await Promise.allSettled(
+        Object.entries(f.files).map(([weight, url]) => new FontFace(f.family, `url(${url})`, { weight: String(weight) }).load())
+      );
+      const ok = results.filter((r) => r.status === 'fulfilled');
+      ok.forEach((r) => document.fonts.add(r.value));
+      this._fontReady[f.id] = ok.length > 0;
+    }
+    this.fillFontSelect();
+    this._updateFontCss();
+    this.renderLivePreview();
+  },
+
+  fillFontSelect() {
+    const sel = document.getElementById('cfg-card-font');
+    if (!sel) return;
+    const available = this.FONTS.filter((f) => f.id === 'system' || this._fontReady[f.id]);
+    const current = this.getStudio().fontId;
+    sel.innerHTML = available.map((f) => `<option value="${f.id}">${f.label}</option>`).join('');
+    sel.value = available.some((f) => f.id === current) ? current : 'system';
+    const hint = document.getElementById('cfg-font-hint');
+    if (hint) hint.textContent = available.length === 1 ? 'ضع ملفات الخطوط (woff2) في libs/fonts لتظهر هنا' : '';
+  },
+
+  applyFont(fontId) {
+    this.flushDesignSave();
+    const studio = this.getStudio();
+    studio.fontId = fontId;
+    this.saveStudio(studio);
+    this._updateFontCss();
+    this.renderLivePreview();
+  },
+
+  _updateFontCss() {
+    const f = this.FONTS.find((x) => x.id === this.getStudio().fontId);
+    this._fontCss = f && f.family && this._fontReady[f.id] ? `"${f.family}", ` : '';
+  },
+
+  // سلسلة الخط المستخدمة في رسم الكانفاس (الخط المختار ثم بدائل آمنة)
+  fontStack() {
+    return `${this._fontCss}"Tajawal", "Cairo", "Segoe UI", Tahoma, sans-serif`;
+  },
+
+  // خلفيات البطاقات: صورة لكل (اتجاه × وجه)، تُصغَّر وتُحفظ JPEG محلياً
+  _readBgStore() {
+    try {
+      return JSON.parse(localStorage.getItem(this.BG_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  },
+
+  loadBackgrounds() {
+    const saved = this._readBgStore()[this.getOrientation()] || {};
+    ['front', 'back'].forEach((side) => {
+      this.state[`${side}BgImage`] = null;
+      if (!saved[side]) return;
+      const img = new Image();
+      img.onload = () => {
+        this.state[`${side}BgImage`] = img;
+        this.renderLivePreview();
+      };
+      img.src = saved[side];
+    });
+  },
+
+  persistBackground(side, img) {
+    const o = this.getOrientation();
+    const store = this._readBgStore();
+    store[o] = store[o] || {};
+    if (!img) {
+      delete store[o][side];
+    } else {
+      const k = Math.min(1, 1300 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k);
+      c.height = Math.round(img.naturalHeight * k);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      store[o][side] = c.toDataURL('image/jpeg', 0.85);
+    }
+    try {
+      localStorage.setItem(this.BG_KEY, JSON.stringify(store));
+    } catch (e) {
+      UI.showToast('الصورة كبيرة ولم تُحفظ للجلسات القادمة (ستعمل حتى تحديث الصفحة)', 'warning', 3500);
     }
   },
 
@@ -454,8 +693,8 @@ const CardsPDF = {
    * رسم الوجه الأمامي للبطاقة على أي Canvas مع دعم معامل التكبير (scale)
    */
   drawFrontCardOnCanvas(canvas, student, frontCfg, scale = 1) {
-    const width = this.BASE_WIDTH * scale;
-    const height = this.BASE_HEIGHT * scale;
+    const width = this.getDims().w * scale;
+    const height = this.getDims().h * scale;
     canvas.width = width;
     canvas.height = height;
 
@@ -474,12 +713,12 @@ const CardsPDF = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = frontCfg.nameColor || '#0f172a';
-    ctx.font = `bold ${Math.round(frontCfg.nameSize * scale)}px "Tajawal", "Cairo", sans-serif`;
+    ctx.font = `bold ${Math.round(frontCfg.nameSize * scale)}px ${this.fontStack()}`;
     ctx.fillText(student.name || '', frontCfg.nameX * scale, frontCfg.nameY * scale);
 
     // 3. رسم عمر الطالب في الإحداثيات المحددة
     ctx.fillStyle = frontCfg.ageColor || '#334155';
-    ctx.font = `600 ${Math.round(frontCfg.ageSize * scale)}px "Tajawal", "Cairo", sans-serif`;
+    ctx.font = `600 ${Math.round(frontCfg.ageSize * scale)}px ${this.fontStack()}`;
     ctx.fillText(`العمر: ${student.age} سنة`, frontCfg.ageX * scale, frontCfg.ageY * scale);
 
     // 4. توليد ورسم رمز الـ QR الذي يحتوي على المعرّف (ID) الخاص بالطالب فقط
@@ -528,8 +767,8 @@ const CardsPDF = {
    * رسم الوجه الخلفي الثابت للبطاقة على أي Canvas مع دعم معامل التكبير (scale)
    */
   drawBackCardOnCanvas(canvas, backCfg, scale = 1) {
-    const width = this.BASE_WIDTH * scale;
-    const height = this.BASE_HEIGHT * scale;
+    const width = this.getDims().w * scale;
+    const height = this.getDims().h * scale;
     canvas.width = width;
     canvas.height = height;
 
@@ -548,7 +787,7 @@ const CardsPDF = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = backCfg.mosqueColor || '#059669';
-    ctx.font = `800 ${Math.round(backCfg.mosqueSize * scale)}px "Tajawal", "Cairo", sans-serif`;
+    ctx.font = `800 ${Math.round(backCfg.mosqueSize * scale)}px ${this.fontStack()}`;
     ctx.fillText(
       backCfg.mosqueName || 'شباب مسجد قطنا',
       backCfg.mosqueX * scale,
@@ -589,21 +828,21 @@ const CardsPDF = {
     ctx.fillStyle = '#ffffff';
 
     if (isFront) {
-      ctx.font = `bold ${Math.round(16 * scale)}px "Tajawal", "Cairo", sans-serif`;
+      ctx.font = `bold ${Math.round(16 * scale)}px ${this.fontStack()}`;
       ctx.fillText('بطاقة طالب حلقة قرآنية', width / 2, Math.round(38 * scale));
-      ctx.font = `600 ${Math.round(13 * scale)}px "Tajawal", "Cairo", sans-serif`;
+      ctx.font = `600 ${Math.round(13 * scale)}px ${this.fontStack()}`;
       ctx.fillStyle = '#d1fae5';
       ctx.fillText('شباب مسجد قطنا', width / 2, Math.round(66 * scale));
     } else {
-      ctx.font = `bold ${Math.round(17 * scale)}px "Tajawal", "Cairo", sans-serif`;
+      ctx.font = `bold ${Math.round(17 * scale)}px ${this.fontStack()}`;
       ctx.fillText('إدارة الحلقات القرآنية', width / 2, Math.round(50 * scale));
-      ctx.font = `600 ${Math.round(13 * scale)}px "Tajawal", "Cairo", sans-serif`;
+      ctx.font = `600 ${Math.round(13 * scale)}px ${this.fontStack()}`;
       ctx.fillStyle = '#d1fae5';
       ctx.fillText('﴿ وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا ﴾', width / 2, Math.round(82 * scale));
 
       // زخرفة سفلية هادئة للوجه الخلفي
       ctx.fillStyle = '#64748b';
-      ctx.font = `600 ${Math.round(12 * scale)}px "Tajawal", "Cairo", sans-serif`;
+      ctx.font = `600 ${Math.round(12 * scale)}px ${this.fontStack()}`;
       ctx.fillText('يرجى إحضار البطاقة في كل جلسة لتسجيل النقاط', width / 2, height - Math.round(34 * scale));
     }
   },
@@ -682,17 +921,20 @@ const CardsPDF = {
 
       // إعداد ورقة A4 بوضع Landscape (عرض 297mm × ارتفاع 210mm)
       // بحيث تتسع البطاقة ذات العرض 74.25mm والطول 105mm لـ 8 بطاقات بالضبط في كل صفحة
+      const landscapeCards = this.getOrientation() === 'landscape';
+      const pageOrientation = landscapeCards ? 'portrait' : 'landscape';
       const doc = new jsPDFConstructor({
-        orientation: 'landscape',
+        orientation: pageOrientation,
         unit: 'mm',
         format: 'a4',
         compress: true
       });
 
-      const CARD_W_MM = 74.25; // ربع طول ورقة A4 (297 / 4)
-      const CARD_H_MM = 105.0; // نصف عرض ورقة A4 (210 / 2)
-      const COLS = 4;
-      const ROWS = 2;
+      // طولية: 74.25×105 على A4 أفقي (4×2) — عرضية: 105×74.25 على A4 طولي (2×4)
+      const CARD_W_MM = landscapeCards ? 105.0 : 74.25;
+      const CARD_H_MM = landscapeCards ? 74.25 : 105.0;
+      const COLS = landscapeCards ? 2 : 4;
+      const ROWS = landscapeCards ? 4 : 2;
       const CARDS_PER_PAGE = COLS * ROWS; // 8 بطاقات في كل صفحة A4
 
       const config = this.readCurrentConfigFromInputs();
@@ -712,7 +954,7 @@ const CardsPDF = {
       chunks.forEach((studentChunk, chunkIndex) => {
         // إذا لم تكن الدفعة الأولى، أضف صفحة فردية جديدة للوجه الأمامي
         if (chunkIndex > 0) {
-          doc.addPage('a4', 'landscape');
+          doc.addPage('a4', pageOrientation);
         }
 
         // ------------------------------------------------------------------
@@ -741,7 +983,7 @@ const CardsPDF = {
         // يتم عكس ترتيب الأعمدة أفقياً (COLS - 1 - col) بحيث ينطبق ظهر كل بطاقة
         // خلف وجهها الأمامي تماماً حتى لو كان عدد البطاقات في الصفحة الأخيرة أقل من 8.
         // ------------------------------------------------------------------
-        doc.addPage('a4', 'landscape');
+        doc.addPage('a4', pageOrientation);
 
         studentChunk.forEach((_, idxInPage) => {
           const frontCol = idxInPage % COLS;

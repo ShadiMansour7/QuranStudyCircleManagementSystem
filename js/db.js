@@ -4,6 +4,9 @@
  */
 
 const DB_STORAGE_KEY = 'QATANA_MOSQUE_QURAN_DB_V1';
+// إصدار هيكل البيانات: 1 = نسخ قديمة بلا حقل إصدار، 2 = أول إصدار يحمل schemaVersion.
+// ارفعه عند تغيير هيكل البيانات بطريقة تحتاج ترحيلاً داخل _mergeDefaults.
+const DB_SCHEMA_VERSION = 2;
 
 const DEFAULT_DB_STATE = {
   lastStudentNumber: 1000,
@@ -11,12 +14,13 @@ const DEFAULT_DB_STATE = {
     {
       id: 'CIRCLE-1',
       name: 'حلقة أبي بكر الصديق',
+      prefix: 'QAT',
       createdAt: new Date().toISOString()
     }
   ],
   students: [],
   settings: {
-    theme: 'emerald', // 'emerald' | 'forest' | 'olive'
+    theme: 'emerald', // 'emerald' | 'forest' | 'olive' | 'sage' | 'mint' | 'moss' | 'pine' | 'mist'
     mode: 'light',    // 'light' | 'dark'
     mosqueName: 'شباب مسجد قطنا',
     cardDesign: {
@@ -45,23 +49,49 @@ const DEFAULT_DB_STATE = {
 };
 
 const DB = {
+  // كاش بالذاكرة للبيانات بعد الدمج مع الافتراضيات. للقراءة فقط: لا تعدّل ما تُرجعه _peek()
+  // (getCircles / getStudents / getStudentById). أما getData() فتُرجع نسخة مستقلة آمنة للتعديل.
+  _cache: null,
+
+  _clone(obj) {
+    return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
+  },
+
   /**
    * تهيئة قاعدة البيانات في localStorage عند التشغيل لأول مرة
    */
   init() {
-    const raw = localStorage.getItem(DB_STORAGE_KEY);
-    if (!raw) {
-      this.saveData(DEFAULT_DB_STATE);
-      return JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
-    }
+    let raw = null;
     try {
-      const parsed = JSON.parse(raw);
-      return this._mergeDefaults(parsed);
+      raw = localStorage.getItem(DB_STORAGE_KEY);
+    } catch (err) {
+      console.warn('تعذر الوصول إلى localStorage:', err);
+    }
+    if (!raw) return this._resetToDefaults();
+    try {
+      this._cache = this._mergeDefaults(JSON.parse(raw));
+      return this._clone(this._cache);
     } catch (err) {
       console.error('خطأ في قراءة قاعدة البيانات، سيتم استعادة الهيكل الافتراضي:', err);
-      this.saveData(DEFAULT_DB_STATE);
-      return JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+      // نحتفظ بنسخة من النص التالف (خانة واحدة) قبل الاستبدال كي لا تضيع البيانات نهائياً
+      try {
+        localStorage.setItem(DB_STORAGE_KEY + '_CORRUPT_BACKUP', raw);
+      } catch (e) {
+        /* تجاهل */
+      }
+      return this._resetToDefaults();
     }
+  },
+
+  _resetToDefaults() {
+    const fresh = this._mergeDefaults(this._clone(DEFAULT_DB_STATE));
+    try {
+      this.saveData(fresh);
+    } catch (err) {
+      console.warn('تعذر حفظ البيانات الافتراضية:', err);
+      this._cache = fresh; // يعمل التطبيق في الذاكرة فقط
+    }
+    return this._clone(fresh);
   },
 
   /**
@@ -69,6 +99,7 @@ const DB = {
    */
   _mergeDefaults(data) {
     const merged = {
+      schemaVersion: DB_SCHEMA_VERSION,
       lastStudentNumber: typeof data.lastStudentNumber === 'number' ? data.lastStudentNumber : 1000,
       circles: Array.isArray(data.circles) ? data.circles : [],
       students: Array.isArray(data.students) ? data.students : [],
@@ -88,6 +119,12 @@ const DB = {
       }
     };
 
+    // ضمان وجود رمز معرّف لكل حلقة (الحلقات القديمة تأخذ QAT)
+    merged.circles = merged.circles.map((c) => ({
+      ...c,
+      prefix: this.normalizePrefix(c.prefix) || 'QAT'
+    }));
+
     // التحقق من سلامة سجلات الطلاب
     merged.students = merged.students.map((st) => ({
       id: String(st.id || '').trim(),
@@ -104,25 +141,43 @@ const DB = {
   },
 
   /**
-   * قراءة كامل البيانات من localStorage
+   * نسخة مشتركة من الكاش للقراءة فقط (لا تعدّلها). تُقرأ من localStorage مرة واحدة ثم تبقى بالذاكرة.
    */
-  getData() {
-    const raw = localStorage.getItem(DB_STORAGE_KEY);
-    if (!raw) {
-      return this.init();
-    }
-    try {
-      return this._mergeDefaults(JSON.parse(raw));
-    } catch (e) {
-      return this.init();
-    }
+  _peek() {
+    if (this._cache) return this._cache;
+    this.init();
+    return this._cache;
   },
 
   /**
-   * حفظ كامل البيانات في localStorage
+   * قراءة كامل البيانات: نسخة مستقلة يمكن تعديلها ثم تمريرها إلى saveData
+   */
+  getData() {
+    return this._clone(this._peek());
+  },
+
+  /**
+   * حفظ كامل البيانات في localStorage. عند الفشل (امتلاء التخزين مثلاً) يُرمى خطأ بعبارة عربية
+   * ولا يتغير الكاش، فتبقى الواجهة مطابقة لما هو محفوظ فعلاً.
    */
   saveData(data) {
-    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(data));
+    let json;
+    try {
+      json = JSON.stringify(data);
+      localStorage.setItem(DB_STORAGE_KEY, json);
+    } catch (err) {
+      this._cache = null; // المرجع الوحيد للحقيقة هو ما في التخزين
+      const quota =
+        err && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014);
+      const e = new Error(
+        quota
+          ? 'مساحة التخزين في المتصفح ممتلئة ولم تُحفظ هذه العملية. صدّر نسخة احتياطية ثم احذف بيانات أو خلفيات غير لازمة.'
+          : 'تعذر حفظ البيانات على هذا الجهاز (قد يكون التخزين معطّلاً أو وضع التصفح الخاص مفعّلاً).'
+      );
+      e.cause = err;
+      throw e;
+    }
+    this._cache = this._mergeDefaults(JSON.parse(json));
   },
 
   /* ========================================================================
@@ -130,14 +185,14 @@ const DB = {
      ======================================================================== */
 
   getCircles() {
-    return this.getData().circles;
+    return this._peek().circles;
   },
 
   getCircleById(circleId) {
     return this.getCircles().find((c) => c.id === circleId) || null;
   },
 
-  addCircle(name) {
+  addCircle(name, prefix) {
     const trimmedName = String(name || '').trim();
     if (!trimmedName) {
       throw new Error('يرجى إدخال اسم الحلقة.');
@@ -149,9 +204,15 @@ const DB = {
       throw new Error('توجد حلقة بهذا الاسم مسبقاً.');
     }
 
+    const cleanPrefix = this.normalizePrefix(prefix);
+    if (!cleanPrefix) {
+      throw new Error('رمز المعرّف يجب أن يكون من 2 إلى 4 أحرف أو أرقام إنجليزية (مثل QAT).');
+    }
+
     const newCircle = {
       id: 'CIRCLE-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
       name: trimmedName,
+      prefix: cleanPrefix,
       createdAt: new Date().toISOString()
     };
 
@@ -160,18 +221,69 @@ const DB = {
     return newCircle;
   },
 
-  deleteCircle(circleId) {
+  /**
+   * حذف حلقة. إن كان فيها طلاب يجب تحديد حلقة أخرى (moveToCircleId) لنقلهم إليها،
+   * فلا يبقى أي طالب بدون حلقة. يرجع عدد الطلاب المنقولين.
+   */
+  deleteCircle(circleId, moveToCircleId) {
     const data = this.getData();
+    const count = data.students.filter((s) => s.circleId === circleId).length;
+    if (count > 0) {
+      const target = data.circles.find((c) => c.id === moveToCircleId && c.id !== circleId);
+      if (!target) throw new Error('اختر حلقة أخرى لنقل الطلاب إليها قبل الحذف.');
+      data.students.forEach((s) => {
+        if (s.circleId === circleId) s.circleId = target.id;
+      });
+    }
     data.circles = data.circles.filter((c) => c.id !== circleId);
-    // فك ارتباط الطلاب التابعين للحلقة المحذوفة أو نقلهم لأول حلقة متاحة
-    const fallbackCircleId = data.circles.length > 0 ? data.circles[0].id : '';
-    data.students = data.students.map((s) => {
-      if (s.circleId === circleId) {
-        return { ...s, circleId: fallbackCircleId };
-      }
-      return s;
+    this.saveData(data);
+    return count;
+  },
+
+  /**
+   * تعديل اسم الحلقة ورمز معرّفها (الرمز الجديد يخص الطلاب الجدد فقط؛ معرّفات القدامى ثابتة)
+   */
+  updateCircle(circleId, { name, prefix }) {
+    const data = this.getData();
+    const circle = data.circles.find((c) => c.id === circleId);
+    if (!circle) throw new Error('الحلقة غير موجودة.');
+    const cleanName = String(name || '').trim();
+    if (!cleanName) throw new Error('اسم الحلقة مطلوب.');
+    if (data.circles.some((c) => c.id !== circleId && c.name.trim().toLowerCase() === cleanName.toLowerCase())) {
+      throw new Error('توجد حلقة أخرى بنفس الاسم.');
+    }
+    const cleanPrefix = this.normalizePrefix(prefix);
+    if (!cleanPrefix) throw new Error('رمز المعرّف يجب أن يكون من 2 إلى 4 أحرف أو أرقام إنجليزية.');
+    circle.name = cleanName;
+    circle.prefix = cleanPrefix;
+    this.saveData(data);
+    return circle;
+  },
+
+  /**
+   * التراجع عن عملية نقاط: يُضاف قيد عكسي (يبقى السجل الأصلي ظاهراً للتدقيق)
+   * ويُعلَّم الأصلي reverted. لا يمكن التراجع عن قيد تراجع.
+   */
+  revertLogEntry(studentId, logId) {
+    const data = this.getData();
+    const st = data.students.find((s) => s.id === studentId);
+    if (!st) throw new Error('الطالب غير موجود.');
+    const entry = (st.pointsLog || []).find((l) => l.id === logId);
+    if (!entry) throw new Error('العملية غير موجودة.');
+    if (entry.reverted || entry.revertOf) throw new Error('لا يمكن التراجع عن هذه العملية.');
+    const change = -Number(entry.change);
+    st.points = (Number(st.points) || 0) + change;
+    entry.reverted = true;
+    st.pointsLog.unshift({
+      id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+      change,
+      operation: change > 0 ? 'add' : 'deduct',
+      reason: 'تراجع عن: ' + entry.reason,
+      timestamp: new Date().toISOString(),
+      revertOf: entry.id
     });
     this.saveData(data);
+    return st;
   },
 
   /* ========================================================================
@@ -181,24 +293,46 @@ const DB = {
   /**
    * توليد معرّف فريد غير متكرر للطالب بصيغة QAT-1001
    */
-  _generateNextStudentId(data) {
-    let nextNum = (Number(data.lastStudentNumber) || 1000) + 1;
-    const existingIds = new Set(data.students.map((s) => s.id.toUpperCase()));
+  normalizePrefix(raw) {
+    const p = String(raw || '').trim().toUpperCase();
+    return /^[A-Z0-9]{2,4}$/.test(p) ? p : '';
+  },
 
-    while (existingIds.has(`QAT-${nextNum}`)) {
+  /**
+   * المعرّف = رمز حلقة الطالب + رقم تسلسلي عام غير مكرر (مثل ABC-1005).
+   * الرقم فريد عبر كل الحلقات، فيمكن إدخال الرقم وحده يدوياً دون التباس.
+   * يبقى المعرّف ثابتاً حتى لو انتقل الطالب لحلقة أخرى (لأن بطاقته مطبوعة).
+   */
+  _generateNextStudentId(data, circleId) {
+    const circle = data.circles.find((c) => c.id === circleId);
+    const prefix = this.normalizePrefix(circle && circle.prefix) || 'QAT';
+    const usedNumbers = new Set(data.students.map((s) => (String(s.id).match(/(\d+)$/) || [])[1]));
+
+    let nextNum = (Number(data.lastStudentNumber) || 1000) + 1;
+    while (usedNumbers.has(String(nextNum))) {
       nextNum++;
     }
 
     data.lastStudentNumber = nextNum;
-    return `QAT-${nextNum}`;
+    return `${prefix}-${nextNum}`;
+  },
+
+  /**
+   * إيجاد فهرس طالب من معرّف كامل (ABC-1005) أو من الرقم وحده (1005)
+   */
+  _findStudentIndexByToken(data, token) {
+    const t = String(token || '').trim().toUpperCase();
+    if (/^\d+$/.test(t)) {
+      return data.students.findIndex((s) => (String(s.id).match(/(\d+)$/) || [])[1] === t);
+    }
+    return data.students.findIndex((s) => s.id.toUpperCase() === t);
   },
 
   /**
    * جلب قائمة الطلاب مع دعم التصفية بالحلقة، البحث الفوري، والفرز الأبجدي
    */
   getStudents({ circleId = 'ALL', searchQuery = '', sortAlphabetically = false } = {}) {
-    const data = this.getData();
-    let list = [...data.students];
+    let list = [...this._peek().students];
 
     if (circleId && circleId !== 'ALL') {
       list = list.filter((s) => s.circleId === circleId);
@@ -227,8 +361,7 @@ const DB = {
   getStudentById(studentId) {
     if (!studentId) return null;
     const cleanId = String(studentId).trim().toUpperCase();
-    const data = this.getData();
-    return data.students.find((s) => s.id.toUpperCase() === cleanId) || null;
+    return this._peek().students.find((s) => s.id.toUpperCase() === cleanId) || null;
   },
 
   /**
@@ -246,14 +379,15 @@ const DB = {
     }
 
     const data = this.getData();
-    const newId = this._generateNextStudentId(data);
+    const targetCircleId = circleId || (data.circles[0] ? data.circles[0].id : '');
+    const newId = this._generateNextStudentId(data, targetCircleId);
 
     const newStudent = {
       id: newId,
       name: trimmedName,
       age: numericAge,
       parentPhone: String(parentPhone || '').trim(),
-      circleId: circleId || (data.circles[0] ? data.circles[0].id : ''),
+      circleId: targetCircleId,
       points: 0,
       pointsLog: [],
       createdAt: new Date().toISOString()
@@ -404,10 +538,10 @@ const DB = {
     const nowIso = new Date().toISOString();
 
     normalizedIds.forEach((targetId) => {
-      const idx = data.students.findIndex((s) => s.id.toUpperCase() === targetId);
+      const idx = this._findStudentIndexByToken(data, targetId);
       if (idx === -1) {
         notFoundIds.push(targetId);
-      } else {
+      } else if (!updatedStudents.includes(data.students[idx])) {
         const st = data.students[idx];
         st.points = (Number(st.points) || 0) + signedChange;
         if (!Array.isArray(st.pointsLog)) {
@@ -436,6 +570,70 @@ const DB = {
   },
 
   /**
+   * تطبيق جلسة حضور/غياب دفعة واحدة:
+   * - الحاضرون (المعرّفات الممسوحة/المدخلة): إضافة presentPoints مع presentReason.
+   * - الغائبون = كل طلاب الحلقة المختارة غير الحاضرين: خصم absentPoints مع absentReason
+   *   (إذا كان absentPoints = 0 لا يُخصم شيء ولا يُسجَّل أي سبب للغائبين).
+   * dryRun=true يحسب الأعداد فقط دون أي تعديل (للمعاينة قبل التأكيد).
+   */
+  applyAttendanceSession({ circleId, presentTokens = [], presentPoints, presentReason, absentPoints, absentReason, dryRun = false }) {
+    const presentAmt = Math.abs(Number(presentPoints)) || 0;
+    const absentAmt = Math.abs(Number(absentPoints)) || 0;
+    const pReason = String(presentReason || '').trim();
+    const aReason = String(absentReason || '').trim();
+
+    if (presentAmt === 0 && absentAmt === 0) {
+      throw new Error('حدّد عدد نقاط للحاضرين أو للغائبين.');
+    }
+    if (presentAmt > 0 && !pReason) {
+      throw new Error('يرجى كتابة سبب إضافة النقاط للحاضرين.');
+    }
+    if (absentAmt > 0 && !aReason) {
+      throw new Error('يرجى كتابة سبب خصم النقاط من الغائبين.');
+    }
+    if (absentAmt > 0 && !this.getCircleById(circleId)) {
+      throw new Error('اختر الحلقة لتحديد الغائبين.');
+    }
+
+    const data = this.getData();
+    const presentSet = new Set();
+    const notFoundIds = [];
+    presentTokens.forEach((tok) => {
+      const idx = this._findStudentIndexByToken(data, tok);
+      if (idx === -1) notFoundIds.push(String(tok));
+      else presentSet.add(data.students[idx].id);
+    });
+
+    const presentList = presentAmt > 0 ? data.students.filter((s) => presentSet.has(s.id)) : [];
+    const absentList = absentAmt > 0
+      ? data.students.filter((s) => s.circleId === circleId && !presentSet.has(s.id))
+      : [];
+    const result = {
+      presentCount: presentList.length,
+      absentCount: absentList.length,
+      notFoundIds
+    };
+    if (dryRun) return result;
+
+    const nowIso = new Date().toISOString();
+    const addLog = (st, change, operation, reason) => {
+      st.points = (Number(st.points) || 0) + change;
+      if (!Array.isArray(st.pointsLog)) st.pointsLog = [];
+      st.pointsLog.unshift({
+        id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+        change,
+        operation,
+        reason,
+        timestamp: nowIso
+      });
+    };
+    presentList.forEach((st) => addLog(st, presentAmt, 'add', pReason));
+    absentList.forEach((st) => addLog(st, -absentAmt, 'deduct', aReason));
+    if (presentList.length || absentList.length) this.saveData(data);
+    return result;
+  },
+
+  /**
    * جلب قائمة المراكز مرتبة تنازلياً حسب النقاط
    */
   getLeaderboard({ circleId = 'ALL', searchQuery = '' } = {}) {
@@ -453,7 +651,7 @@ const DB = {
      ======================================================================== */
 
   getSettings() {
-    return this.getData().settings;
+    return this._clone(this._peek().settings);
   },
 
   updateSettings(partialSettings) {
@@ -467,7 +665,7 @@ const DB = {
   },
 
   getCardDesign() {
-    return this.getData().settings.cardDesign;
+    return this._clone(this._peek().settings.cardDesign);
   },
 
   saveCardDesign(frontConfig, backConfig) {
@@ -493,6 +691,7 @@ const DB = {
     const data = this.getData();
     const payload = {
       app: 'إدارة الحلقات القرآنية - شباب مسجد قطنا',
+      schemaVersion: DB_SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
       data: data
     };
@@ -502,30 +701,95 @@ const DB = {
   /**
    * استيراد قاعدة البيانات من محتوى ملف نصي .txt
    */
-  importDatabaseFromJsonString(jsonText) {
+  /** قراءة نص النسخة الاحتياطية والتحقق منها دون حفظ أي شيء */
+  parseBackupString(jsonText) {
     if (!jsonText || typeof jsonText !== 'string') {
       throw new Error('ملف النسخة الاحتياطية فارغ أو غير صالح.');
     }
-
     let parsed;
     try {
       parsed = JSON.parse(jsonText);
     } catch (e) {
       throw new Error('صيغة الملف غير صالحة (لا يحتوي على بيانات JSON سليمة).');
     }
-
     const rawDb = parsed && parsed.data && Array.isArray(parsed.data.students) ? parsed.data : parsed;
-
     if (!rawDb || !Array.isArray(rawDb.students) || !Array.isArray(rawDb.circles)) {
       throw new Error('الملف المرفوع لا يتطابق مع هيكل بيانات نظام الحلقات القرآنية.');
     }
+    // نسخة بلا حقل إصدار = نسخة قديمة (1) وتُقبل. نسخة أحدث من التطبيق تُرفض كي لا تُفقد حقولها.
+    const version = Number(parsed.schemaVersion ?? rawDb.schemaVersion ?? 1) || 1;
+    if (version > DB_SCHEMA_VERSION) {
+      throw new Error('هذه النسخة الاحتياطية من إصدار أحدث من التطبيق. حدّث التطبيق ثم أعد الاستيراد.');
+    }
+    return this._mergeDefaults(rawDb);
+  },
 
-    const validatedData = this._mergeDefaults(rawDb);
+  /** استبدال كل البيانات (بما فيها الإعدادات وتصميم البطاقات) */
+  replaceAllData(validatedData) {
     this.saveData(validatedData);
     return validatedData;
+  },
+
+  /** مُبقى للتوافق: تحقق ثم استبدال مباشر */
+  importDatabaseFromJsonString(jsonText) {
+    return this.replaceAllData(this.parseBackupString(jsonText));
+  },
+
+  /**
+   * دمج نسخة مستوردة مع البيانات الحالية (الإعدادات الحالية تبقى كما هي):
+   * - الحلقة تُطابَق بالمعرّف ثم بالاسم، وإلا تُضاف حلقة جديدة.
+   * - طالب بنفس المعرّف والاسم = مكرر يُتخطى. نفس المعرّف لطالب مختلف = تعارض،
+   *   فيأخذ المستورد معرّفاً جديداً (وبطاقته المطبوعة القديمة لن تصلح له).
+   */
+  mergeImportedData(imported) {
+    const data = this.getData();
+    const num = (id) => Number((String(id).match(/(\d+)$/) || [])[1]) || 0;
+    // نرفع العدّاد فوق كل أرقام الملف المستورد قبل توليد أي معرّف جديد
+    data.lastStudentNumber = Math.max(
+      Number(data.lastStudentNumber) || 1000,
+      Number(imported.lastStudentNumber) || 1000,
+      ...imported.students.map((s) => num(s.id))
+    );
+
+    const circleMap = {};
+    const summary = { addedCircles: 0, addedStudents: 0, skippedDuplicates: 0, renumbered: 0 };
+    imported.circles.forEach((ic) => {
+      const key = String(ic.name).trim().toLowerCase();
+      const target =
+        data.circles.find((c) => c.id === ic.id) ||
+        data.circles.find((c) => c.name.trim().toLowerCase() === key);
+      if (target) {
+        circleMap[ic.id] = target.id;
+      } else {
+        data.circles.push({ ...ic });
+        circleMap[ic.id] = ic.id;
+        summary.addedCircles++;
+      }
+    });
+
+    imported.students.forEach((is) => {
+      const circleId = circleMap[is.circleId] || (data.circles[0] ? data.circles[0].id : '');
+      const existing = data.students.find((s) => s.id.toUpperCase() === String(is.id).toUpperCase());
+      if (existing && existing.name.trim() === String(is.name).trim()) {
+        summary.skippedDuplicates++;
+        return;
+      }
+      const id = existing ? this._generateNextStudentId(data, circleId) : is.id;
+      if (existing) summary.renumbered++;
+      data.students.push({ ...is, id, circleId });
+      summary.addedStudents++;
+    });
+
+    this.saveData(data);
+    return summary;
   }
 };
 
 // تهيئة قاعدة البيانات فوراً وتصديرها للنطاق العام (window)
 window.DB = DB;
+
+// تعديل البيانات من تبويب آخر: نُسقط الكاش ليُعاد تحميله من التخزين
+window.addEventListener('storage', (e) => {
+  if (e.key === DB_STORAGE_KEY || e.key === null) DB._cache = null;
+});
 DB.init();

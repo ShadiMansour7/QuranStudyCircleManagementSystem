@@ -89,7 +89,7 @@ const PointsView = {
       btnOpenBatch.addEventListener('click', () => {
         const form = document.getElementById('form-batch-ids-points');
         if (form) form.reset();
-        document.getElementById('batch-points-amount').value = 5;
+        UI.fillAttendanceCircles('batch');
         UI.openModal('modal-batch-ids-points');
       });
     }
@@ -168,19 +168,20 @@ const PointsView = {
     }
 
     rankedStudents.forEach((student, index) => {
-      const rankNumber = index + 1;
+      // ترتيب كثيف (مثل ألعاب لينكدإن): المتساوون يتشاركون المركز والتالي يأخذ المركز التالي مباشرة (1،1،2،3،3)
+      const rankNumber = new Set(rankedStudents.filter((x) => x.points > student.points).map((x) => x.points)).size + 1;
       const circleName = circlesMap[student.circleId] || 'غير محدد';
 
       let rankClass = '';
       let rankBadgeContent = String(rankNumber);
 
-      if (rankNumber === 1) {
+      if (rankNumber === 1 && student.points > 0) {
         rankClass = 'rank-1';
         rankBadgeContent = '🥇';
-      } else if (rankNumber === 2) {
+      } else if (rankNumber === 2 && student.points > 0) {
         rankClass = 'rank-2';
         rankBadgeContent = '🥈';
-      } else if (rankNumber === 3) {
+      } else if (rankNumber === 3 && student.points > 0) {
         rankClass = 'rank-3';
         rankBadgeContent = '🥉';
       }
@@ -275,7 +276,25 @@ const PointsView = {
               <div class="log-date">🕒 ${UI.escapeHtml(UI.formatDateTimeAr(entry.timestamp))}</div>
             </div>
             <span class="log-amount ${isPositive ? 'positive' : 'negative'}">${formattedAmount}</span>
+            ${entry.id && !entry.reverted && !entry.revertOf
+              ? `<button type="button" class="btn btn-sm btn-secondary" data-undo-log="${UI.escapeHtml(entry.id)}" style="margin-inline-start:.5rem;">↩️ تراجع</button>`
+              : ''}
           `;
+          if (entry.reverted) item.style.opacity = '0.55';
+          const undoBtn = item.querySelector('[data-undo-log]');
+          if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+              if (!window.confirm(`التراجع عن (${formattedAmount}) بسبب "${entry.reason}"؟`)) return;
+              try {
+                DB.revertLogEntry(student.id, entry.id);
+                this.renderStudentPointsOverview(student.id);
+                this.refreshAll();
+                UI.showToast('تم التراجع عن العملية', 'success');
+              } catch (err) {
+                UI.showToast(err.message || 'تعذر التراجع', 'error');
+              }
+            });
+          }
           logContainer.appendChild(item);
         });
       }
@@ -360,55 +379,38 @@ const PointsView = {
   normalizeInputStudentId(rawToken) {
     const cleaned = String(rawToken || '').trim().toUpperCase();
     if (!cleaned) return '';
-    if (/^\d+$/.test(cleaned)) {
-      return `QAT-${cleaned}`;
-    }
+    // الأرقام وحدها (مثل 1005) تُحلّ داخل DB حسب الرقم التسلسلي للمعرّف
     return cleaned;
   },
 
   handleBatchIdsSubmit() {
-    const operationType = document.getElementById('batch-operation-type').value;
-    const amount = document.getElementById('batch-points-amount').value;
-    const reason = document.getElementById('batch-points-reason').value;
+    const cfg = UI.readAttendanceFields('batch');
     const rawText = document.getElementById('batch-ids-textarea').value;
 
-    // فصل المعرّفات بالفاصلة الإنجليزية (,) أو الفاصلة العربية (،) أو الأسطر
+    // فصل المعرّفات بالفاصلة (,) أو (،) أو الأسطر أو المسافات
     const tokens = String(rawText || '')
-      .split(/[,،\n]+/)
+      .split(/[,،\s]+/)
       .map((t) => this.normalizeInputStudentId(t))
       .filter(Boolean);
 
-    if (tokens.length === 0) {
-      UI.showToast('يرجى إدخال معرّفات الطلاب مفصولة بفاصلة (,)', 'error');
-      return;
-    }
-
     try {
-      const result = DB.batchModifyPointsByIds(tokens, amount, operationType, reason);
-
-      this.renderLeaderboard();
-
-      if (result.updatedStudents.length > 0 && result.notFoundIds.length === 0) {
-        UI.closeModal('modal-batch-ids-points');
-        UI.showToast(
-          `تم تطبيق العملية (${result.signedChange > 0 ? '+' + result.signedChange : result.signedChange}) على ${result.updatedStudents.length} طالب بنجاح`,
-          'success',
-          2800
-        );
-      } else if (result.updatedStudents.length > 0 && result.notFoundIds.length > 0) {
-        UI.closeModal('modal-batch-ids-points');
-        UI.showToast(
-          `تم تحديث ${result.updatedStudents.length} طالب، ولم يُعثر على المعرّفات: (${result.notFoundIds.join(', ')})`,
-          'warning',
-          4000
-        );
-      } else {
-        UI.showToast(
-          `لم يتم العثور على أي طالب بالمعرّفات المدخلة: (${result.notFoundIds.join(', ')})`,
-          'error',
-          3500
-        );
+      const preview = DB.applyAttendanceSession({ ...cfg, presentTokens: tokens, dryRun: true });
+      const lines = [];
+      if (cfg.presentPoints > 0) {
+        lines.push(`➕ ${cfg.presentPoints} نقطة لـ ${preview.presentCount} حاضر (السبب: ${cfg.presentReason})`);
       }
+      if (cfg.absentPoints > 0) {
+        lines.push(`➖ ${cfg.absentPoints} نقطة من ${preview.absentCount} غائب (السبب: ${cfg.absentReason})`);
+      }
+      if (preview.notFoundIds.length) {
+        lines.push(`⚠️ معرّفات غير موجودة (تُتجاهل): ${preview.notFoundIds.join(', ')}`);
+      }
+      if (!window.confirm('تأكيد العملية:\n' + lines.join('\n'))) return;
+
+      const result = DB.applyAttendanceSession({ ...cfg, presentTokens: tokens });
+      UI.closeModal('modal-batch-ids-points');
+      this.renderLeaderboard();
+      UI.showToast(`تم: ${result.presentCount} حاضر • ${result.absentCount} غائب`, 'success', 3000);
     } catch (err) {
       UI.showToast(err.message || 'تعذر تنفيذ العملية الجماعية', 'error');
     }
@@ -440,34 +442,34 @@ const PointsView = {
         : DB.getCircleById(this.state.selectedCircleId);
 
     const reportTitle = selectedCircleObj
-      ? `لوحة المراكز والنقاط - ${selectedCircleObj.name}`
-      : 'لوحة المراكز والنقاط الشاملة - جميع الحلقات';
+      ? `لوحة المراكز والنقاط: ${selectedCircleObj.name}`
+      : 'لوحة المراكز والنقاط لجميع الحلقات';
 
     const exportDate = UI.formatDateTimeAr(new Date().toISOString());
 
     const rowsHtml = rankedStudents
       .map((st, idx) => {
-        const rank = idx + 1;
+        // ترتيب كثيف: 10,10,8,7,7 ← 1,1,2,3,3
+        const rank = new Set(rankedStudents.filter((x) => x.points > st.points).map((x) => x.points)).size + 1;
         const circleName = circlesMap[st.circleId] || 'غير محدد';
         let medal = `#${rank}`;
         let rowClass = '';
-        if (rank === 1) {
+        if (rank === 1 && st.points > 0) {
           medal = '🥇 المركز الأول';
           rowClass = 'top-1';
-        } else if (rank === 2) {
+        } else if (rank === 2 && st.points > 0) {
           medal = '🥈 المركز الثاني';
           rowClass = 'top-2';
-        } else if (rank === 3) {
+        } else if (rank === 3 && st.points > 0) {
           medal = '🥉 المركز الثالث';
           rowClass = 'top-3';
         }
 
         return `
-          <tr class="student-row ${rowClass}" data-search="${UI.escapeHtml(st.name.toLowerCase())} ${UI.escapeHtml(st.id.toLowerCase())} ${UI.escapeHtml(circleName.toLowerCase())}">
+          <tr class="student-row ${rowClass}" data-search="${UI.escapeHtml(st.name.toLowerCase())} ${UI.escapeHtml(circleName.toLowerCase())}">
             <td class="rank-cell">${medal}</td>
             <td class="name-cell">
               <strong>${UI.escapeHtml(st.name)}</strong>
-              <span class="id-tag">${UI.escapeHtml(st.id)}</span>
             </td>
             <td>${UI.escapeHtml(circleName)}</td>
             <td class="points-cell"><span>${Number(st.points)}</span> نقطة</td>
@@ -504,8 +506,9 @@ const PointsView = {
       box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2);
       margin-bottom: 1.5rem;
     }
-    .header-card h1 { font-size: 1.45rem; margin-bottom: 0.35rem; }
-    .header-card h2 { font-size: 1.1rem; font-weight: 600; opacity: 0.95; margin-bottom: 0.5rem; }
+    .header-card h1 { font-size: 1.75rem; font-weight: 800; line-height: 1.35; }
+    .header-card .org { font-size: 1.2rem; font-weight: 600; opacity: 0.95; margin: 0.1rem 0 1rem; }
+    .header-card h2 { display: inline-block; font-size: 1rem; font-weight: 600; background: rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 0.3rem 1.1rem; margin-bottom: 0.65rem; }
     .header-card .meta { font-size: 0.85rem; opacity: 0.85; }
     .search-bar {
       background: #ffffff;
@@ -566,15 +569,6 @@ const PointsView = {
     tr.top-3 { background-color: rgba(180, 83, 9, 0.10); }
     .rank-cell { font-weight: 800; white-space: nowrap; }
     .name-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .id-tag {
-      font-family: monospace;
-      font-size: 0.78rem;
-      background: rgba(5, 150, 105, 0.12);
-      color: #059669;
-      padding: 0.15rem 0.5rem;
-      border-radius: 6px;
-      direction: ltr;
-    }
     .points-cell span {
       font-weight: 800;
       font-size: 1.15rem;
@@ -595,13 +589,14 @@ const PointsView = {
 <body>
   <div class="container">
     <div class="header-card">
-      <h1>🕌 إدارة الحلقات القرآنية - شباب مسجد قطنا</h1>
+      <h1>إدارة الحلقات القرآنية</h1>
+      <div class="org">شباب مسجد قطنا</div>
       <h2>${UI.escapeHtml(reportTitle)}</h2>
       <div class="meta">تاريخ التصدير: ${UI.escapeHtml(exportDate)} | إجمالي الطلاب: ${rankedStudents.length}</div>
     </div>
 
     <div class="search-bar">
-      <input type="search" id="searchInput" placeholder="ابحث عن طالب بالاسم أو المعرّف (مثل QAT-1001) أو اسم الحلقة..." />
+      <input type="search" id="searchInput" placeholder="ابحث عن طالب بالاسم أو اسم الحلقة..." />
       <button type="button" id="searchBtn">بحث</button>
     </div>
 
@@ -610,7 +605,7 @@ const PointsView = {
         <thead>
           <tr>
             <th>المركز</th>
-            <th>اسم الطالب والمعرّف</th>
+            <th>اسم الطالب</th>
             <th>الحلقة القرآنية</th>
             <th>رصيد النقاط</th>
           </tr>

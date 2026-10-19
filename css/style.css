@@ -40,22 +40,24 @@
     --radius-md: 12px;
     --radius-lg: 16px;
     --transition: 0.2s ease-in-out;
+    --gradient-primary: var(--primary);
+    --gradient-primary-hover: var(--primary-hover);
 }
 
 /* الثيم الأول: الأخضر الزمردي (Emerald) - الوضع الليلي */
 [data-theme="emerald"][data-mode="dark"] {
     --primary: #059669;
-    --primary-hover: #10b981;
+    --primary-hover: #16c28a;
     --primary-soft: rgba(16, 185, 129, 0.18);
     --primary-border: rgba(16, 185, 129, 0.4);
     --bg-main: #022c22;
-    --bg-card: #064e3b;
-    --bg-muted: #043927;
-    --bg-input: #033a2c;
+    --bg-card: #06402f;
+    --bg-muted: #04352a;
+    --bg-input: #02281f;
     --text-main: #ecfdf5;
     --text-secondary: #a7f3d0;
     --text-muted: #6ee7b7;
-    --border-color: rgba(167, 243, 208, 0.2);
+    --border-color: rgba(167, 243, 208, 0.26);
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.25);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.35);
     --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.5);
@@ -80,16 +82,16 @@
 /* الثيم الثاني: أخضر الغابات (Forest & Slate) - الوضع الليلي */
 [data-theme="forest"][data-mode="dark"] {
     --primary: #15803d;
-    --primary-hover: #22c55e;
+    --primary-hover: #34d27b;
     --primary-soft: rgba(34, 197, 94, 0.16);
     --primary-border: rgba(34, 197, 94, 0.38);
     --bg-main: #0f172a;
     --bg-card: #1e293b;
     --bg-muted: #162032;
-    --bg-input: #0f172a;
+    --bg-input: #0b1220;
     --text-main: #f8fafc;
     --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --text-muted: #9fb0c6;
     --border-color: #334155;
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
@@ -115,20 +117,210 @@
 /* الثيم الثالث: الأخضر الزيتوني الهادئ (Sage & Olive) - الوضع الليلي */
 [data-theme="olive"][data-mode="dark"] {
     --primary: #4d7c0f;
-    --primary-hover: #65a30d;
+    --primary-hover: #7cb518;
     --primary-soft: rgba(101, 163, 13, 0.18);
     --primary-border: rgba(101, 163, 13, 0.4);
     --bg-main: #141c0c;
     --bg-card: #1f2b14;
     --bg-muted: #18230f;
-    --bg-input: #141c0c;
+    --bg-input: #0f1609;
     --text-main: #f5f5f4;
-    --text-secondary: #d9f99d;
-    --text-muted: #a3e635;
-    --border-color: rgba(163, 230, 53, 0.22);
+    --text-secondary: #dcebb8;
+    --text-muted: #b5d46a;
+    --border-color: rgba(181, 212, 106, 0.24);
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+ *  ثيمات رمادية-خضراء إضافية (4–8): sage / mint / moss / pine / mist
+ *  --gradient-primary: لون الأزرار والتبويب النشط (تدرج في ثيم mist، ولون صلب في بقية الثيمات)
+ *  ========================================================================== */
+/* سيج وجرافيت - نهاري */
+[data-theme="sage"][data-mode="light"] {
+    --primary: #3d7a5a;
+    --primary-hover: #2f6a4b;
+    --primary-soft: rgba(61, 122, 90, 0.12);
+    --primary-border: rgba(61, 122, 90, 0.3);
+    --bg-main: #f4f6f5;
+    --bg-card: #ffffff;
+    --bg-muted: #e9edeb;
+    --bg-input: #ffffff;
+    --text-main: #1f2923;
+    --text-secondary: #4a5650;
+    --text-muted: #5f6d66;
+    --border-color: #d5dbd8;
+}
+
+/* سيج وجرافيت - ليلي */
+[data-theme="sage"][data-mode="dark"] {
+    --primary: #3d7a5a;
+    --primary-hover: #6fbf94;
+    --primary-soft: rgba(111, 191, 148, 0.18);
+    --primary-border: rgba(111, 191, 148, 0.4);
+    --bg-main: #121614;
+    --bg-card: #1b211e;
+    --bg-muted: #161b19;
+    --bg-input: #0e1210;
+    --text-main: #eef3f0;
+    --text-secondary: #c3cdc8;
+    --text-muted: #93a19a;
+    --border-color: #2c3531;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* نعناع وحجر - نهاري */
+[data-theme="mint"][data-mode="light"] {
+    --primary: #247d5d;
+    --primary-hover: #1d6a4f;
+    --primary-soft: rgba(36, 125, 93, 0.12);
+    --primary-border: rgba(36, 125, 93, 0.3);
+    --bg-main: #f7f7f4;
+    --bg-card: #ffffff;
+    --bg-muted: #eeeeea;
+    --bg-input: #ffffff;
+    --text-main: #232622;
+    --text-secondary: #4f524c;
+    --text-muted: #6b6e66;
+    --border-color: #dedfd8;
+}
+
+/* نعناع وحجر - ليلي */
+[data-theme="mint"][data-mode="dark"] {
+    --primary: #26805f;
+    --primary-hover: #5fd3a8;
+    --primary-soft: rgba(95, 211, 168, 0.18);
+    --primary-border: rgba(95, 211, 168, 0.4);
+    --bg-main: #171917;
+    --bg-card: #222522;
+    --bg-muted: #1c1f1c;
+    --bg-input: #131513;
+    --text-main: #f3f4f1;
+    --text-secondary: #cfd2cb;
+    --text-muted: #9a9e95;
+    --border-color: #353935;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* طحلب وفحم - نهاري */
+[data-theme="moss"][data-mode="light"] {
+    --primary: #4a7a3a;
+    --primary-hover: #3d6a2e;
+    --primary-soft: rgba(74, 122, 58, 0.12);
+    --primary-border: rgba(74, 122, 58, 0.3);
+    --bg-main: #f3f4f2;
+    --bg-card: #ffffff;
+    --bg-muted: #e6e9e4;
+    --bg-input: #ffffff;
+    --text-main: #1b1f1a;
+    --text-secondary: #454c43;
+    --text-muted: #626a5f;
+    --border-color: #d3d8d0;
+}
+
+/* طحلب وفحم - ليلي */
+[data-theme="moss"][data-mode="dark"] {
+    --primary: #4a7a3a;
+    --primary-hover: #8bc070;
+    --primary-soft: rgba(139, 192, 112, 0.18);
+    --primary-border: rgba(139, 192, 112, 0.4);
+    --bg-main: #1a1c1a;
+    --bg-card: #252825;
+    --bg-muted: #1f221f;
+    --bg-input: #161816;
+    --text-main: #f1f3ef;
+    --text-secondary: #c9cfc5;
+    --text-muted: #98a093;
+    --border-color: #3a3e39;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* صنوبر وفضي - نهاري */
+[data-theme="pine"][data-mode="light"] {
+    --primary: #1f6f5c;
+    --primary-hover: #175a4a;
+    --primary-soft: rgba(31, 111, 92, 0.12);
+    --primary-border: rgba(31, 111, 92, 0.3);
+    --bg-main: #f2f5f6;
+    --bg-card: #ffffff;
+    --bg-muted: #e4eaec;
+    --bg-input: #ffffff;
+    --text-main: #16252b;
+    --text-secondary: #435258;
+    --text-muted: #5b6d74;
+    --border-color: #d0dadd;
+}
+
+/* صنوبر وفضي - ليلي */
+[data-theme="pine"][data-mode="dark"] {
+    --primary: #1f6f5c;
+    --primary-hover: #5cc8ad;
+    --primary-soft: rgba(92, 200, 173, 0.18);
+    --primary-border: rgba(92, 200, 173, 0.4);
+    --bg-main: #0f1a1d;
+    --bg-card: #17262a;
+    --bg-muted: #122023;
+    --bg-input: #0b1416;
+    --text-main: #eef5f6;
+    --text-secondary: #bfd0d4;
+    --text-muted: #8ea5ab;
+    --border-color: #2a3f44;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* تدرج الضباب - نهاري */
+[data-theme="mist"][data-mode="light"] {
+    --primary: #2f855a;
+    --primary-hover: #276749;
+    --primary-soft: rgba(47, 133, 90, 0.12);
+    --primary-border: rgba(47, 133, 90, 0.3);
+    --bg-main: #f3f6f5;
+    --bg-card: #ffffff;
+    --bg-muted: #e7ecea;
+    --bg-input: #ffffff;
+    --text-main: #1c2622;
+    --text-secondary: #46534e;
+    --text-muted: #5d6b66;
+    --border-color: #d3dad7;
+    --gradient-primary: linear-gradient(135deg, #2f855a 0%, #4f8a77 55%, #64748b 100%);
+    --gradient-primary-hover: linear-gradient(135deg, #38a169 0%, #5a9a86 55%, #718096 100%);
+}
+
+/* تدرج الضباب - ليلي */
+[data-theme="mist"][data-mode="dark"] {
+    --primary: #2b7a55;
+    --primary-hover: #5fc08f;
+    --primary-soft: rgba(95, 192, 143, 0.18);
+    --primary-border: rgba(95, 192, 143, 0.4);
+    --bg-main: #101514;
+    --bg-card: #19211f;
+    --bg-muted: #141a19;
+    --bg-input: #0c1110;
+    --text-main: #edf3f0;
+    --text-secondary: #c2cdc8;
+    --text-muted: #93a29b;
+    --border-color: #2b3633;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55);
+    --gradient-primary: linear-gradient(135deg, #1f6b4a 0%, #3a5a52 55%, #475569 100%);
+    --gradient-primary-hover: linear-gradient(135deg, #2b7a55 0%, #4a6e64 55%, #566274 100%);
+}
+
+/* الوضع الليلي: --primary-hover فاتح (يُستعمل لون نص/روابط)، فلا نستعمله كخلفية لزر أساسي
+   حتى يبقى النص الأبيض مقروءاً؛ نكتفي بتفتيح بسيط للون الزر نفسه. */
+[data-mode="dark"] .btn-primary:hover {
+    background: var(--gradient-primary);
+    filter: brightness(1.15);
 }
 
 /* --------------------------------------------------------------------------
@@ -243,6 +435,17 @@ button {
     color: var(--text-secondary);
 }
 
+/* عنوان الشريط العلوي بسطرين (مطابق لترويسة تصدير المراكز): الاسم ثم اسم المسجد */
+.brand-titles h1 span {
+    display: block;
+}
+
+.brand-titles .brand-line-org {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
 /* شريط التنقل الرئيسي */
 .main-nav {
     display: flex;
@@ -269,7 +472,7 @@ button {
 }
 
 .nav-tab.active {
-    background-color: var(--primary);
+    background: var(--gradient-primary);
     color: #ffffff;
     box-shadow: var(--shadow-sm);
 }
@@ -375,12 +578,12 @@ button {
 }
 
 .btn-primary {
-    background-color: var(--primary);
+    background: var(--gradient-primary);
     color: #ffffff;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: var(--gradient-primary-hover);
 }
 
 .btn-secondary {
@@ -510,7 +713,7 @@ button {
 }
 
 .circle-chip.active {
-    background-color: var(--primary);
+    background: var(--gradient-primary);
     color: #ffffff;
     border-color: var(--primary);
 }
@@ -591,7 +794,7 @@ button {
     right: 0;
     width: 5px;
     height: 100%;
-    background-color: var(--primary);
+    background: var(--gradient-primary);
 }
 
 .student-card:hover {
@@ -1349,4 +1552,16 @@ input[type="color"] {
     .points-score-box {
         justify-content: center;
     }
+}
+
+/* ===== شعار الشريط العلوي: صورة icon-192.png بدل الحرف «ق» ===== */
+img.brand-logo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  object-fit: contain;
+  background: transparent;
+  border-radius: 12px;
+  flex-shrink: 0;
 }

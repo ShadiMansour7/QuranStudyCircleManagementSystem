@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="emerald" data-mode="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#059669" />
   <meta name="description" content="نظام إدارة الحلقات القرآنية - شباب مسجد قطنا (يعمل بدون إنترنت)" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -26,10 +26,13 @@
   <header class="app-header">
     <div class="header-container">
       <div class="brand-area">
-        <div class="brand-logo" aria-hidden="true">ق</div>
+        <img class="brand-logo" src="icon-192.png" alt="شعار شباب مسجد قطنا" width="46" height="46" />
         <div class="brand-titles">
-          <h1>إدارة الحلقات القرآنية - شباب مسجد قطنا</h1>
-          <p>نظام الإدارة والتحفيز والبطاقات الذكية (Offline PWA)</p>
+          <h1>
+            <span class="brand-line-main">إدارة الحلقات القرآنية</span>
+            <span class="brand-line-org">شباب مسجد قطنا</span>
+          </h1>
+          <p>نظام الإدارة والتحفيز والبطاقات الذكية</p>
         </div>
       </div>
 
@@ -429,6 +432,51 @@
                 <span class="color-swatch" style="background-color: #1f2b14;"></span>
               </span>
             </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="sage">
+              <span>4. سيج وجرافيت (Sage & Graphite)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #3d7a5a;"></span>
+                <span class="color-swatch" style="background-color: #6fbf94;"></span>
+                <span class="color-swatch" style="background-color: #1b211e;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="mint">
+              <span>5. نعناع وحجر (Mint & Stone)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #247d5d;"></span>
+                <span class="color-swatch" style="background-color: #5fd3a8;"></span>
+                <span class="color-swatch" style="background-color: #222522;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="moss">
+              <span>6. طحلب وفحم (Moss & Charcoal)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #4a7a3a;"></span>
+                <span class="color-swatch" style="background-color: #8bc070;"></span>
+                <span class="color-swatch" style="background-color: #252825;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="pine">
+              <span>7. صنوبر وفضي (Pine & Silver)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background-color: #1f6f5c;"></span>
+                <span class="color-swatch" style="background-color: #5cc8ad;"></span>
+                <span class="color-swatch" style="background-color: #17262a;"></span>
+              </span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-choice="mist">
+              <span>8. تدرج الضباب (Mist Gradient)</span>
+              <span class="theme-swatch-group">
+                <span class="color-swatch" style="background: linear-gradient(135deg, #2f855a, #64748b);"></span>
+                <span class="color-swatch" style="background-color: #5fc08f;"></span>
+                <span class="color-swatch" style="background-color: #19211f;"></span>
+              </span>
+            </button>
           </div>
         </div>
 
@@ -471,6 +519,7 @@
         <button type="button" class="modal-close" data-close-modal="modal-add-circle">&times;</button>
       </div>
       <form id="form-add-circle">
+
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label" for="input-circle-name">اسم الحلقة القرآنية *</label>
@@ -481,6 +530,10 @@
               placeholder="مثال: حلقة عمر بن الخطاب"
               required
             />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="input-circle-prefix">رمز المعرّف (2–4 أحرف أو أرقام إنجليزية) *</label>
+            <input type="text" id="input-circle-prefix" class="form-control" value="QAT" maxlength="4" dir="ltr" style="text-transform: uppercase;" pattern="[A-Za-z0-9]{2,4}" required />
           </div>
         </div>
         <div class="modal-footer">
@@ -685,7 +738,7 @@
       </div>
       <form id="form-batch-ids-points">
         <div class="modal-body">
-          <div class="form-group">
+          <!--<div class="form-group">
             <label class="form-label" for="batch-operation-type">نوع العملية *</label>
             <select id="batch-operation-type" class="form-control" required>
               <option value="add">➕ إضافة نقاط للحاضرين / المتميزين</option>
@@ -702,11 +755,12 @@
               <label class="form-label" for="batch-points-reason">السبب الموحد في السجل *</label>
               <input type="text" id="batch-points-reason" class="form-control" placeholder="مثال: حضور جلسة يوم الجمعة" required />
             </div>
-          </div>
+          </div>-->
+          <div id="batch-attendance-settings"></div>
 
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="batch-ids-textarea">
-              معرّفات الطلاب (IDs) مفصولة بفاصلة <code>,</code> *
+              معرّفات الطلاب الحاضرين (IDs) مفصولة بفاصلة <code>,</code> *
             </label>
             <textarea
               id="batch-ids-textarea"
@@ -714,7 +768,7 @@
               rows="4"
               dir="ltr"
               placeholder="QAT-1001, QAT-1002, QAT-1005 أو 1001, 1002, 1005"
-              required
+              
             ></textarea>
             <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
               يمكنك كتابة المعرّف كاملاً مثل <code>QAT-1001</code> أو الرقم فقط <code>1001</code> مع الفصل بفاصلة <code>,</code>.
@@ -723,7 +777,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close-modal="modal-batch-ids-points">إلغاء</button>
-          <button type="submit" class="btn btn-primary">تطبيق العملية على جميع الطلاب</button>
+          <button type="submit" class="btn btn-primary">تطبيق على الحاضرين والغائبين</button>
         </div>
       </form>
     </div>
@@ -737,7 +791,7 @@
         <button type="button" class="modal-close" id="btn-close-qr-modal" data-close-modal="modal-qr-scanner">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- إعدادات العملية قبل وأثناء المسح -->
+        <!-- إعدادات العملية قبل وأثناء المسح 
         <div class="control-grid" style="margin-bottom: 0.85rem;">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="qr-operation-type">نوع العملية الفورية</label>
@@ -754,7 +808,9 @@
             <label class="form-label" for="qr-points-reason">السبب المسجل تلقائياً</label>
             <input type="text" id="qr-points-reason" class="form-control" value="تسجيل حضور عبر بطاقة QR" placeholder="اكتب السبب..." />
           </div>
-        </div>
+        </div>-->
+
+        <div id="qr-attendance-settings"></div>
 
         <div class="qr-scanner-box">
           <div class="scanner-status-bar">
@@ -775,9 +831,11 @@
             ⚡ يمكنك المسح المتتالي بالكاميرا دون توقف، أو استخدام قارئ الباركود الليزري مباشرة (مع مهلة 2 ثانية لمنع تكرار نفس البطاقة بالخطأ).
           </p>
         </div>
+        <div id="qr-session-panel"></div>
       </div>
       <div class="modal-footer">
         <span id="qr-session-counter" style="font-weight: 700; color: var(--primary-hover);">إجمالي العمليات في هذه الجلسة: 0</span>
+        <button type="button" class="btn btn-primary" id="btn-finish-attendance">✅ إنهاء الجلسة وتطبيق النقاط</button>
         <button type="button" class="btn btn-secondary" id="btn-footer-close-qr" data-close-modal="modal-qr-scanner">إغلاق الماسح</button>
       </div>
     </div>

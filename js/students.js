@@ -1,4 +1,3 @@
-
 /**
  * منطق اللوحة الرئيسية حصراً (students.js) - شباب مسجد قطنا
  * يدير: الحلقات القرآنية، إضافة الطلاب، البحث الفوري، الفرز الأبجدي،
@@ -50,7 +49,8 @@ const StudentsView = {
         e.preventDefault();
         const nameInput = document.getElementById('input-circle-name');
         try {
-          const newCircle = DB.addCircle(nameInput.value);
+          const prefixInput = document.getElementById('input-circle-prefix');
+          const newCircle = DB.addCircle(nameInput.value, prefixInput ? prefixInput.value : 'QAT');
           this.state.selectedCircleId = newCircle.id;
           UI.closeModal('modal-add-circle');
           this.refreshAll();
@@ -71,12 +71,27 @@ const StudentsView = {
         const circle = DB.getCircleById(this.state.selectedCircleId);
         if (!circle) return;
 
-        const confirmed = window.confirm(
-          `هل أنت متأكد من حذف "${circle.name}"؟\nسيتم الاحتفاظ بطلابها ونقلهم تلقائياً إلى الحلقة الافتراضية دون فقدان بياناتهم أو نقاطهم.`
-        );
-        if (!confirmed) return;
+        const studentCount = DB.getStudents({ circleId: circle.id }).length;
+        let moveToId = '';
+        if (studentCount > 0) {
+          const others = DB.getCircles().filter((c) => c.id !== circle.id);
+          if (others.length === 0) {
+            UI.showToast('لا يمكن حذف آخر حلقة وفيها طلاب. أضف حلقة أخرى أولاً.', 'warning', 3500);
+            return;
+          }
+          const list = others.map((c, i) => `${i + 1}) ${c.name}`).join('\n');
+          const answer = window.prompt(`في "${circle.name}" ${studentCount} طالب. اكتب رقم الحلقة التي سيُنقلون إليها:\n${list}`);
+          if (answer === null) return;
+          const chosen = others[parseInt(answer, 10) - 1];
+          if (!chosen) {
+            UI.showToast('رقم غير صحيح، لم يُحذف شيء', 'error');
+            return;
+          }
+          moveToId = chosen.id;
+        }
+        if (!window.confirm(`حذف "${circle.name}" نهائياً؟`)) return;
 
-        DB.deleteCircle(circle.id);
+        DB.deleteCircle(circle.id, moveToId);
         this.state.selectedCircleId = 'ALL';
         this.refreshAll();
         if (window.PointsView) window.PointsView.refreshAll();
@@ -268,7 +283,38 @@ const StudentsView = {
 
     // إظهار زر حذف الحلقة فقط عند تحديد حلقة معينة
     if (deleteCircleBtn) {
-      deleteCircleBtn.style.display = this.state.selectedCircleId === 'ALL' ? 'none' : 'inline-flex';
+      // زر "تعديل الحلقة" يُنشأ مرة واحدة بجانب زر الحذف
+      let editBtn = document.getElementById('btn-edit-active-circle');
+      if (!editBtn) {
+        editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.id = 'btn-edit-active-circle';
+        editBtn.className = deleteCircleBtn.className.replace(/danger[\w-]*/g, 'secondary');
+        editBtn.textContent = '✏️ تعديل الحلقة';
+        editBtn.addEventListener('click', () => this.editActiveCircle());
+        deleteCircleBtn.parentNode.insertBefore(editBtn, deleteCircleBtn);
+      }
+      const display = this.state.selectedCircleId === 'ALL' ? 'none' : 'inline-flex';
+      deleteCircleBtn.style.display = display;
+      editBtn.style.display = display;
+    }
+  },
+
+  // تعديل اسم الحلقة المحددة ورمز معرّفها (الرمز يخص الطلاب الجدد فقط)
+  editActiveCircle() {
+    const circle = DB.getCircleById(this.state.selectedCircleId);
+    if (!circle) return;
+    const name = window.prompt('اسم الحلقة:', circle.name);
+    if (name === null) return;
+    const prefix = window.prompt('رمز المعرّف للطلاب الجدد (2–4 أحرف/أرقام إنجليزية). المعرّفات القديمة لا تتغير:', circle.prefix || 'QAT');
+    if (prefix === null) return;
+    try {
+      DB.updateCircle(circle.id, { name, prefix });
+      this.refreshAll();
+      if (window.PointsView) window.PointsView.refreshAll();
+      UI.showToast('تم تحديث الحلقة', 'success');
+    } catch (err) {
+      UI.showToast(err.message || 'تعذر تعديل الحلقة', 'error');
     }
   },
 
