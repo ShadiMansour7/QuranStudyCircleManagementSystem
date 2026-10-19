@@ -757,6 +757,19 @@ button {
     box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
+/* قسم البحث والحلقات الموحّد في اللوحة الرئيسية: البحث فوق الحلقات، ومظهر كل بطاقة كما هو */
+.dashboard-finder {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.dashboard-finder > .toolbar-card,
+.dashboard-finder > .circles-bar {
+    margin-bottom: 0;
+}
+
 /* --------------------------------------------------------------------------
  *  7. شبكة وبطاقات الطلاب في اللوحة الرئيسية (Students Grid & Cards)
  *  -------------------------------------------------------------------------- */
@@ -1655,4 +1668,9 @@ img.brand-logo {
 
     /* ملاحظة "اضغط على اسم الطالب..." أصغر */
     #view-points > p { font-size: 0.78rem !important; margin-bottom: 0.6rem !important; }
+
+    /* قسم البحث والحلقات الموحّد */
+    .dashboard-finder { gap: 0.5rem; margin-bottom: 0.8rem; }
+    .dashboard-finder > .toolbar-card,
+    .dashboard-finder > .circles-bar { margin-bottom: 0; }
 }

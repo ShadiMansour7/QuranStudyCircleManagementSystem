@@ -108,31 +108,34 @@
         </div>
       </div>
 
-      <!-- شريط تصفية الحلقات -->
-      <div class="circles-bar">
-        <div class="circles-list" id="dashboard-circles-list">
-          <!-- يتم توليد أزرار الحلقات هنا ديناميكياً عبر js/students.js -->
+      <!-- قسم البحث والحلقات (واحد): البحث فوق شريط الحلقات -->
+      <div class="dashboard-finder" id="dashboard-finder">
+        <!-- شريط البحث الفوري والفرز الأبجدي -->
+        <div class="toolbar-card">
+          <div class="search-box">
+            <input
+              type="search"
+              id="dashboard-search-input"
+              class="search-input"
+              placeholder="ابحث بالاسم أو المعرّف"
+              autocomplete="off"
+            />
+          </div>
+          <div class="action-group">
+            <button type="button" class="btn btn-secondary" id="btn-toggle-alpha-sort" data-sorted="false">
+              <span>🔤</span>
+              <span id="alpha-sort-label">ترتيب أبجدي: إيقاف</span>
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn btn-danger-outline btn-sm" id="btn-delete-active-circle" style="display: none;">
-          🗑️ حذف الحلقة المحددة
-        </button>
-      </div>
 
-      <!-- شريط البحث الفوري والفرز الأبجدي -->
-      <div class="toolbar-card">
-        <div class="search-box">
-          <input
-            type="search"
-            id="dashboard-search-input"
-            class="search-input"
-            placeholder="ابحث بالاسم أو المعرّف"
-            autocomplete="off"
-          />
-        </div>
-        <div class="action-group">
-          <button type="button" class="btn btn-secondary" id="btn-toggle-alpha-sort" data-sorted="false">
-            <span>🔤</span>
-            <span id="alpha-sort-label">ترتيب أبجدي: إيقاف</span>
+        <!-- شريط تصفية الحلقات -->
+        <div class="circles-bar">
+          <div class="circles-list" id="dashboard-circles-list">
+            <!-- يتم توليد أزرار الحلقات هنا ديناميكياً عبر js/students.js -->
+          </div>
+          <button type="button" class="btn btn-danger-outline btn-sm" id="btn-delete-active-circle" style="display: none;">
+            🗑️ حذف الحلقة المحددة
           </button>
         </div>
       </div>
