@@ -430,11 +430,6 @@ button {
     line-height: 1.3;
 }
 
-.brand-titles p {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-}
-
 /* عنوان الشريط العلوي بسطرين (مطابق لترويسة تصدير المراكز): الاسم ثم اسم المسجد */
 .brand-titles h1 span {
     display: block;
@@ -1544,14 +1539,6 @@ input[type="color"] {
         font-size: 1.2rem;
     }
 
-    .leaderboard-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .points-score-box {
-        justify-content: center;
-    }
 }
 
 /* ===== شعار الشريط العلوي: صورة icon-192.png بدل الحرف «ق» ===== */
@@ -1564,4 +1551,90 @@ img.brand-logo {
   background: transparent;
   border-radius: 12px;
   flex-shrink: 0;
+}
+
+/* ==========================================================================
+ *  تحسينات الجوال (الخطوتان 1 و2): تصغير الشريطين وتدمير البطاقات
+ *  ========================================================================== */
+.lbl-short { display: none; }
+
+/* حلقة التركيز: تظهر مع لوحة المفاتيح فقط، وبلون الثيم بدل الإطار الأبيض الافتراضي */
+.nav-tab:focus { outline: none; }
+.nav-tab:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: -3px; }
+
+@media (max-width: 768px) {
+    /* --- الشريط العلوي --- */
+    .app-header { padding-top: env(safe-area-inset-top, 0px); }
+    .header-container { padding: 0.4rem 0.9rem; gap: 0.5rem; }
+    .brand-area { gap: 0.55rem; }
+    img.brand-logo { width: 34px; height: 34px; border-radius: 9px; }
+    .brand-titles h1 { font-size: 0.95rem; line-height: 1.25; }
+    .brand-titles .brand-line-org { font-size: 0.8rem; }
+
+    /* --- الشريط السفلي: سطر واحد، ويحترم شريط الآيفون السفلي --- */
+    body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+    .main-nav {
+        padding: 0.3rem 0.4rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+        gap: 0.25rem;
+    }
+    .nav-tab { padding: 0.3rem 0.25rem; gap: 0.1rem; font-size: 0.72rem; line-height: 1.2; }
+    .nav-tab .tab-icon { font-size: 1.1rem; line-height: 1; }
+    .lbl-full { display: none; }
+    .lbl-short { display: inline; }
+
+    /* --- المحتوى --- */
+    .app-main { padding: 0.9rem 0.85rem; }
+    .section-header { gap: 0.6rem; margin-bottom: 0.8rem; }
+    .section-title { font-size: 1.05rem; }
+
+    /* الأزرار: عمودان متساويان، وزر QR بعرض كامل */
+    .section-header .action-group { width: 100%; /*display: grid; grid-template-columns: 1fr 1fr;*/ gap: 0.5rem; }
+    .section-header .action-group .btn {
+        width: 100%; padding: 0.55rem 0.6rem; font-size: 0.85rem; white-space: normal; line-height: 1.3;
+    }
+    #btn-open-qr-scanner { grid-column: 1 / -1; }
+
+    /* الإحصاءات: ثلاث خانات في صف واحد (الرقم فوق والوصف تحته) */
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .stat-card { padding: 0.6rem 0.35rem; text-align: center; justify-content: center; }
+    .stat-icon { display: none; }
+    .stat-info { display: flex; flex-direction: column-reverse; align-items: center; }
+    .stat-info h3 { font-size: 0.72rem; margin: 0.1rem 0 0; line-height: 1.25; }
+    .stat-info .stat-value { font-size: 1.4rem; line-height: 1.1; }
+
+    /* شرائح الحلقات: سطر واحد قابل للتمرير */
+    .circles-bar { padding: 0.5rem 0.6rem; margin-bottom: 0.8rem; }
+    .circles-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .circles-list::-webkit-scrollbar { display: none; }
+    .circle-chip { flex-shrink: 0; white-space: nowrap; padding: 0.35rem 0.8rem; font-size: 0.84rem; }
+
+    /* البحث + الترتيب/الحلقة في صف واحد */
+    .toolbar-card { flex-wrap: nowrap; gap: 0.5rem; padding: 0.5rem; margin-bottom: 0.8rem; }
+    .search-box { min-width: 0; }
+    .toolbar-card .action-group { min-width: 0 !important; flex: 0 0 auto; flex-wrap: nowrap; }
+    #points-circle-filter { width: 124px; padding: 0.5rem 0.4rem; font-size: 0.85rem; }
+    .search-input { padding: 0.55rem 0.7rem; font-size: 0.9rem; }
+    #btn-toggle-alpha-sort { padding: 0.55rem 0.75rem; }
+    #alpha-sort-label { display: none; }
+    #btn-toggle-alpha-sort[data-sorted="true"] { background-color: var(--primary); border-color: var(--primary); color: #ffffff; }
+
+    /* --- المراكز: صف مدمج، والنقاط شارة على الطرف، مع بقاء ألوان الميداليات وتدرجها --- */
+    .leaderboard-list { gap: 0.45rem; }
+    .leaderboard-row { padding: 0.5rem 0.7rem; gap: 0.5rem; flex-direction: row; align-items: center; }
+    .leaderboard-row:hover { transform: none; }
+    .leaderboard-row.rank-1, .leaderboard-row.rank-2, .leaderboard-row.rank-3 { border-right-width: 4px; }
+    .rank-info { gap: 0.6rem; min-width: 0; }
+    .rank-badge { width: 34px; height: 34px; font-size: 0.9rem; }
+    .rank-1 .rank-badge, .rank-2 .rank-badge, .rank-3 .rank-badge { font-size: 1.15rem; }
+    .student-rank-details { min-width: 0; }
+    .student-rank-details h4 { font-size: 0.98rem; line-height: 1.3; }
+    .student-rank-details p { font-size: 0.74rem; gap: 0.3rem; flex-wrap: nowrap; }
+    .student-rank-details p span:last-child { display: none; } /* "• المركز #n" مكرر مع الشارة */
+    .student-rank-details .student-id-badge { font-size: 0.7rem; padding: 0.05rem 0.4rem; }
+    .points-score-box { padding: 0.2rem 0.6rem; gap: 0.25rem; flex-shrink: 0; justify-content: center; }
+    .points-score-box .points-num { font-size: 1.05rem; }
+    .points-score-box .points-label { font-size: 0.7rem; }
+
+    /* ملاحظة "اضغط على اسم الطالب..." أصغر */
+    #view-points > p { font-size: 0.78rem !important; margin-bottom: 0.6rem !important; }
 }

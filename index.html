@@ -32,26 +32,29 @@
             <span class="brand-line-main">إدارة الحلقات القرآنية</span>
             <span class="brand-line-org">شباب مسجد قطنا</span>
           </h1>
-          <p>نظام الإدارة والتحفيز والبطاقات الذكية</p>
         </div>
       </div>
 
       <nav class="main-nav" aria-label="التنقل الرئيسي">
         <button type="button" class="nav-tab active" data-target="view-dashboard">
           <span class="tab-icon">🕌</span>
-          <span>اللوحة الرئيسية</span>
+          <span class="lbl-full">اللوحة الرئيسية</span>
+          <span class="lbl-short">الرئيسية</span>
         </button>
         <button type="button" class="nav-tab" data-target="view-points">
           <span class="tab-icon">🏆</span>
-          <span>إدارة النقاط والمراكز</span>
+          <span class="lbl-full">إدارة النقاط والمراكز</span>
+          <span class="lbl-short">النقاط</span>
         </button>
         <button type="button" class="nav-tab" data-target="view-cards">
           <span class="tab-icon">🪪</span>
-          <span>بطاقات الطلاب (PDF)</span>
+          <span class="lbl-full">بطاقات الطلاب (PDF)</span>
+          <span class="lbl-short">البطاقات</span>
         </button>
         <button type="button" class="nav-tab" data-target="view-settings">
           <span class="tab-icon">⚙️</span>
-          <span>الإعدادات والنسخ</span>
+          <span class="lbl-full">الإعدادات والنسخ</span>
+          <span class="lbl-short">الإعدادات</span>
         </button>
       </nav>
     </div>
@@ -123,7 +126,7 @@
             type="search"
             id="dashboard-search-input"
             class="search-input"
-            placeholder="ابحث عن طالب بالاسم أو المعرّف (مثل QAT-1001) أو رقم الأهل..."
+            placeholder="ابحث بالاسم أو المعرّف"
             autocomplete="off"
           />
         </div>
@@ -146,19 +149,22 @@
          ------------------------------------------------------------------ -->
     <section id="view-points" class="view-section">
       <div class="section-header">
-        <h2 class="section-title">🏆 إدارة النقاط ولوحة المراكز (Leaderboard)</h2>
+        <h2 class="section-title">🏆 إدارة النقاط ولوحة المراكز</h2>
         <div class="action-group">
           <button type="button" class="btn btn-primary" id="btn-open-qr-scanner">
             <span>📷</span>
-            <span>إضافة/خصم نقاط بواسطة QR</span>
+            <span class="lbl-full">إضافة/خصم نقاط بواسطة QR</span>
+            <span class="lbl-short">إضافة/خصم بواسطة QR</span>
           </button>
           <button type="button" class="btn btn-outline" id="btn-open-batch-ids">
             <span>⌨️</span>
-            <span>إضافة/خصم بالمعرّفات النصية (IDs)</span>
+            <span class="lbl-full">إضافة/خصم بالمعرّفات النصية (IDs)</span>
+            <span class="lbl-short">بالمعرّفات (IDs)</span>
           </button>
           <button type="button" class="btn btn-secondary" id="btn-export-leaderboard-html">
             <span>🌐</span>
-            <span>تصدير المراكز كملف HTML</span>
+            <span class="lbl-full">تصدير المراكز كملف HTML</span>
+            <span class="lbl-short">تصدير HTML</span>
           </button>
         </div>
       </div>
@@ -170,7 +176,7 @@
             type="search"
             id="points-search-input"
             class="search-input"
-            placeholder="ابحث في قائمة المراكز بالاسم أو المعرّف (ID)..."
+            placeholder="ابحث بالاسم أو المعرّف"
             autocomplete="off"
           />
         </div>
@@ -816,7 +822,7 @@
           <div class="scanner-status-bar">
             <div>
               <span class="status-dot"></span>
-              <strong id="qr-scanner-status-text">⚡ وجّه الكاميرا نحو البطاقات تباعاً دون توقف (مهلة ثانيتين لمنع تكرار نفس البطاقة)، ثم اضغط «إنهاء الجلسة وتطبيق النقاط</strong>
+              <strong id="qr-scanner-status-text">⚡ وجّه الكاميرا نحو البطاقات تباعاً دون توقف (مهلة ثانيتين لمنع تكرار نفس البطاقة)، ثم اضغط «إنهاء الجلسة وتطبيق النقاط».</strong>
             </div>
             <div class="action-group">
               <button type="button" class="btn btn-sm btn-primary" id="btn-start-camera-scan">تشغيل الكاميرا 📷</button>
