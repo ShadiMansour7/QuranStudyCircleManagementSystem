@@ -770,6 +770,238 @@ button {
     margin-bottom: 0;
 }
 
+/* الالتصاق والاندماج مع الشريط العلوي: يأخذ قسم البحث خلفية الشريط نفسها بلا خطوط فاصلة */
+#finder-sentinel { height: 1px; margin-bottom: -1px; pointer-events: none; }
+
+.dashboard-finder {
+    position: sticky;
+    top: var(--app-header-h, 0px);
+    z-index: 90;
+    transition: gap 0.25s ease, padding 0.25s ease;
+}
+
+/* خلفية بعرض الشاشة كاملة خلف المجموعة، وظل خفيف أسفلها (يظهران عند الالتصاق فقط) */
+.dashboard-finder::before,
+.dashboard-finder::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    width: 100vw;
+    margin-left: -50vw;
+    pointer-events: none;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.2s ease;
+}
+
+.dashboard-finder::before {
+    top: -1px;
+    bottom: 0;
+    background-color: var(--bg-card);
+}
+
+.dashboard-finder::after {
+    top: 100%;
+    height: 10px;
+    background: linear-gradient(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0));
+}
+
+.dashboard-finder.is-stuck::before,
+.dashboard-finder.is-stuck::after { opacity: 1; }
+
+.dashboard-finder.is-stuck { gap: 0; padding-bottom: 0.45rem; }
+
+.dashboard-finder > .toolbar-card {
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-finder.is-stuck > .toolbar-card {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding-top: 0.5rem;
+    padding-bottom: 0;
+}
+
+/* شرائح الحلقات تنطوي بحركة ناعمة وتعود عند الرجوع للأعلى */
+.dashboard-finder > .circles-bar {
+    max-height: 400px;
+    overflow: hidden;
+    transition: max-height 0.28s ease, opacity 0.2s ease, padding 0.28s ease, border-width 0.28s ease;
+}
+
+.dashboard-finder.is-stuck > .circles-bar {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    pointer-events: none;
+}
+
+/* الشريط العلوي: يختفي حده وظله عند اندماج قسم البحث معه (مع بقاء ارتفاعه ثابتاً) */
+.app-header { transition: background-color var(--transition), border-color var(--transition), box-shadow 0.2s ease; }
+body.finder-stuck .app-header { border-bottom-color: transparent; box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-finder,
+    .dashboard-finder::before,
+    .dashboard-finder::after,
+    .dashboard-finder > .toolbar-card,
+    .dashboard-finder > .circles-bar { transition: none; }
+}
+
+/* ==========================================================================
+ *  الزر العائم (FAB) للوحة الرئيسية وقائمته، ونافذة المعلومات
+ *  ========================================================================== */
+.fab-wrap {
+    display: none;
+    position: fixed;
+    left: 1.25rem;
+    bottom: 1.5rem;
+    z-index: 950;
+}
+
+body.on-dashboard .fab-wrap { display: block; }
+
+.fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--gradient-primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: filter var(--transition), transform var(--transition);
+}
+
+.fab-main:hover { filter: brightness(1.08); }
+.fab-main:active { transform: scale(0.95); }
+.fab-main:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 3px; }
+
+.fab-main-icon {
+    display: block;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    margin-top: -2px;
+    transition: transform 0.2s ease;
+}
+
+.fab-wrap.open .fab-main-icon { transform: rotate(45deg); }
+
+.fab-menu {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.75rem);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 215px;
+    gap: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(8px) scale(0.98);
+    transform-origin: bottom left;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+
+.fab-wrap.open .fab-menu {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition-delay: 0s;
+}
+
+.fab-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    white-space: nowrap;
+    padding: 0.65rem 1.05rem;
+    border-radius: 999px;
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+}
+
+.fab-item:hover { border-color: var(--primary); color: var(--primary-hover); }
+.fab-item:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 2px; }
+.fab-item-icon { font-size: 1.05rem; }
+.fab-item.fab-item-danger { color: var(--danger); }
+.fab-item.fab-item-danger:hover { border-color: var(--danger); color: var(--danger); }
+
+.fab-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 20, 14, 0.28);
+    z-index: 940;
+}
+
+.fab-backdrop[hidden] { display: none; }
+
+/* مساحة أسفل اللوحة الرئيسية كي لا يغطي الزر العائم آخر بطاقة */
+#view-dashboard { padding-bottom: 5rem; }
+
+/* تلميحات النوافذ */
+.form-hint {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.form-hint-danger { color: var(--danger); font-weight: 600; margin-top: 0.75rem; }
+
+.delete-circle-info {
+    margin: 0 0 0.9rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* نافذة المعلومات */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.info-item {
+    background-color: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.1rem 0.5rem;
+    text-align: center;
+}
+
+.info-num {
+    font-size: 2.3rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--primary-hover);
+}
+
+.info-label {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
 /* --------------------------------------------------------------------------
  *  7. شبكة وبطاقات الطلاب في اللوحة الرئيسية (Students Grid & Cards)
  *  -------------------------------------------------------------------------- */
@@ -1673,4 +1905,8 @@ img.brand-logo {
     .dashboard-finder { gap: 0.5rem; margin-bottom: 0.8rem; }
     .dashboard-finder > .toolbar-card,
     .dashboard-finder > .circles-bar { margin-bottom: 0; }
+
+    /* الزر العائم فوق الشريط السفلي العائم */
+    .fab-wrap { left: 1rem; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    #view-dashboard { padding-bottom: 4.5rem; }
 }

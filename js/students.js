@@ -15,6 +15,7 @@ const StudentsView = {
   init() {
     this.bindEvents();
     this.refreshAll();
+    this.initStickyFinder();
   },
 
   /**
@@ -32,15 +33,8 @@ const StudentsView = {
      ======================================================================== */
 
   bindEvents() {
-    // زر فتح نافذة إضافة حلقة جديدة
-    const openAddCircleBtn = document.getElementById('btn-open-add-circle');
-    if (openAddCircleBtn) {
-      openAddCircleBtn.addEventListener('click', () => {
-        const form = document.getElementById('form-add-circle');
-        if (form) form.reset();
-        UI.openModal('modal-add-circle');
-      });
-    }
+    // الزر العائم وقائمته (إضافة طالب/حلقة، معلومات)
+    this.bindFab();
 
     // معالجة نموذج إضافة حلقة جديدة
     const addCircleForm = document.getElementById('form-add-circle');
@@ -63,67 +57,8 @@ const StudentsView = {
       });
     }
 
-    // زر حذف الحلقة المحددة حالياً
-    const deleteCircleBtn = document.getElementById('btn-delete-active-circle');
-    if (deleteCircleBtn) {
-      deleteCircleBtn.addEventListener('click', () => {
-        if (this.state.selectedCircleId === 'ALL') return;
-        const circle = DB.getCircleById(this.state.selectedCircleId);
-        if (!circle) return;
-
-        const studentCount = DB.getStudents({ circleId: circle.id }).length;
-        let moveToId = '';
-        if (studentCount > 0) {
-          const others = DB.getCircles().filter((c) => c.id !== circle.id);
-          if (others.length === 0) {
-            UI.showToast('لا يمكن حذف آخر حلقة وفيها طلاب. أضف حلقة أخرى أولاً.', 'warning', 3500);
-            return;
-          }
-          const list = others.map((c, i) => `${i + 1}) ${c.name}`).join('\n');
-          const answer = window.prompt(`في "${circle.name}" ${studentCount} طالب. اكتب رقم الحلقة التي سيُنقلون إليها:\n${list}`);
-          if (answer === null) return;
-          const chosen = others[parseInt(answer, 10) - 1];
-          if (!chosen) {
-            UI.showToast('رقم غير صحيح، لم يُحذف شيء', 'error');
-            return;
-          }
-          moveToId = chosen.id;
-        }
-        if (!window.confirm(`حذف "${circle.name}" نهائياً؟`)) return;
-
-        DB.deleteCircle(circle.id, moveToId);
-        this.state.selectedCircleId = 'ALL';
-        this.refreshAll();
-        if (window.PointsView) window.PointsView.refreshAll();
-        if (window.CardsPDF) window.CardsPDF.refreshAll();
-        UI.showToast(`تم حذف "${circle.name}" بنجاح`, 'warning');
-      });
-    }
-
-    // زر فتح نافذة إضافة طالب جديد
-    const openAddStudentBtn = document.getElementById('btn-open-add-student');
-    if (openAddStudentBtn) {
-      openAddStudentBtn.addEventListener('click', () => {
-        const circles = DB.getCircles();
-        if (circles.length === 0) {
-          UI.showToast('يرجى إضافة حلقة قرآنية واحدة على الأقل قبل تسجيل الطلاب', 'warning', 2800);
-          UI.openModal('modal-add-circle');
-          return;
-        }
-
-        const form = document.getElementById('form-add-student');
-        if (form) form.reset();
-        this.populateCircleSelectDropdowns();
-
-        // اختيار الحلقة المفتوحة حالياً كخيار افتراضي لتسهيل الإدخال
-        const circleSelect = document.getElementById('input-student-circle');
-        if (circleSelect && this.state.selectedCircleId !== 'ALL') {
-          circleSelect.value = this.state.selectedCircleId;
-        }
-
-        UI.openModal('modal-add-student');
-      });
-    }
+    // نافذتا تعديل وحذف الحلقة (تُفتحان من الزر العائم)
+    this.bindCircleManagementModals();
 
     // معالجة نموذج إضافة طالب جديد
     const addStudentForm = document.getElementById('form-add-student');
@@ -229,12 +164,145 @@ const StudentsView = {
   },
 
   /* ========================================================================
+     1.أ اندماج قسم البحث مع الشريط العلوي عند التمرير (is-stuck)
+     عند ملامسة قسم البحث للشريط العلوي: يأخذ خلفيته، وتنطوي شرائح الحلقات
+     ويبقى البحث وزر الترتيب. وتعود الشرائح عند الرجوع للأعلى.
+     ======================================================================== */
+
+  initStickyFinder() {
+    const finder = document.getElementById('dashboard-finder');
+    const sentinel = document.getElementById('finder-sentinel');
+    const header = document.querySelector('.app-header');
+    if (!finder || !sentinel || !header) return;
+
+    let headerH = Math.round(header.getBoundingClientRect().height);
+
+    // الحالة تُحسب من موضع الحارس مباشرة (لا تعتمد على إشعارات المراقب وحدها)
+    this.syncStickyState = () => {
+      const r = sentinel.getBoundingClientRect();
+      // عنصر مخفي (تبويب آخر) يعطي أبعاداً صفرية: لا التصاق
+      const stuck = r.height > 0 && r.top < headerH;
+      finder.classList.toggle('is-stuck', stuck);
+      document.body.classList.toggle('finder-stuck', stuck);
+    };
+
+    let observer = null;
+    const setup = () => {
+      headerH = Math.round(header.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--app-header-h', `${headerH}px`);
+      if (observer) observer.disconnect();
+      if (typeof IntersectionObserver === 'function') {
+        observer = new IntersectionObserver(() => this.syncStickyState(), {
+          rootMargin: `-${headerH}px 0px 0px 0px`,
+          threshold: 0
+        });
+        observer.observe(sentinel);
+      }
+      this.syncStickyState();
+    };
+
+    setup();
+    if (typeof ResizeObserver === 'function') {
+      let lastH = headerH;
+      new ResizeObserver(() => {
+        const h = Math.round(header.getBoundingClientRect().height);
+        if (h !== lastH) { lastH = h; setup(); }
+      }).observe(header);
+    } else {
+      window.addEventListener('resize', setup);
+    }
+  },
+
+  /* ========================================================================
+     1.ب الزر العائم (FAB) وإجراءاته
+     ======================================================================== */
+
+  bindFab() {
+    const main = document.getElementById('fab-main');
+    const menu = document.getElementById('fab-menu');
+    const backdrop = document.getElementById('fab-backdrop');
+    const wrap = document.getElementById('fab-wrap');
+    if (!main || !menu || !wrap) return;
+
+    main.addEventListener('click', () => {
+      this.setFabOpen(!wrap.classList.contains('open'));
+    });
+    if (backdrop) backdrop.addEventListener('click', () => this.setFabOpen(false));
+
+    menu.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-fab-action]');
+      if (!item) return;
+      this.setFabOpen(false);
+      this.runFabAction(item.getAttribute('data-fab-action'));
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && wrap.classList.contains('open')) {
+        this.setFabOpen(false);
+        main.focus();
+      }
+    });
+  },
+
+  setFabOpen(open) {
+    const main = document.getElementById('fab-main');
+    const wrap = document.getElementById('fab-wrap');
+    const backdrop = document.getElementById('fab-backdrop');
+    if (!main || !wrap) return;
+    wrap.classList.toggle('open', open);
+    main.setAttribute('aria-expanded', String(open));
+    if (backdrop) backdrop.hidden = !open;
+  },
+
+  runFabAction(action) {
+    switch (action) {
+      case 'add-student': this.openAddStudent(); break;
+      case 'add-circle': this.openAddCircle(); break;
+      case 'edit-circle': this.openEditCircle(); break;
+      case 'delete-circle': this.openDeleteCircle(); break;
+      case 'info': this.openInfo(); break;
+      default: break;
+    }
+  },
+
+  openAddCircle() {
+    const form = document.getElementById('form-add-circle');
+    if (form) form.reset();
+    UI.openModal('modal-add-circle');
+  },
+
+  openAddStudent() {
+    const circles = DB.getCircles();
+    if (circles.length === 0) {
+      UI.showToast('يرجى إضافة حلقة قرآنية واحدة على الأقل قبل تسجيل الطلاب', 'warning', 2800);
+      UI.openModal('modal-add-circle');
+      return;
+    }
+
+    const form = document.getElementById('form-add-student');
+    if (form) form.reset();
+    this.populateCircleSelectDropdowns();
+
+    // اختيار الحلقة المفتوحة حالياً كخيار افتراضي لتسهيل الإدخال
+    const circleSelect = document.getElementById('input-student-circle');
+    if (circleSelect && this.state.selectedCircleId !== 'ALL') {
+      circleSelect.value = this.state.selectedCircleId;
+    }
+
+    UI.openModal('modal-add-student');
+  },
+
+  openInfo() {
+    this.updateDashboardStats();
+    UI.openModal('modal-info');
+  },
+
+  /* ========================================================================
      2. عرض شريط الحلقات والقوائم المنسدلة
      ======================================================================== */
 
   renderCirclesBar() {
     const container = document.getElementById('dashboard-circles-list');
-    const deleteCircleBtn = document.getElementById('btn-delete-active-circle');
     if (!container) return;
 
     const circles = DB.getCircles();
@@ -280,41 +348,134 @@ const StudentsView = {
       });
       container.appendChild(chip);
     });
+  },
 
-    // إظهار زر حذف الحلقة فقط عند تحديد حلقة معينة
-    if (deleteCircleBtn) {
-      // زر "تعديل الحلقة" يُنشأ مرة واحدة بجانب زر الحذف
-      let editBtn = document.getElementById('btn-edit-active-circle');
-      if (!editBtn) {
-        editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.id = 'btn-edit-active-circle';
-        editBtn.className = deleteCircleBtn.className.replace(/danger[\w-]*/g, 'secondary');
-        editBtn.textContent = '✏️ تعديل الحلقة';
-        editBtn.addEventListener('click', () => this.editActiveCircle());
-        deleteCircleBtn.parentNode.insertBefore(editBtn, deleteCircleBtn);
-      }
-      const display = this.state.selectedCircleId === 'ALL' ? 'none' : 'inline-flex';
-      deleteCircleBtn.style.display = display;
-      editBtn.style.display = display;
+  /* ========================================================================
+     2.ب نافذتا تعديل وحذف الحلقة (اختيار الحلقة داخل النافذة)
+     ======================================================================== */
+
+  // تعبئة قائمة حلقات (select) وتحديد الحلقة المعروضة حالياً إن وُجدت
+  fillCircleSelect(selectEl, circles, preferredId) {
+    selectEl.innerHTML = '';
+    circles.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      selectEl.appendChild(opt);
+    });
+    if (preferredId && circles.some((c) => c.id === preferredId)) selectEl.value = preferredId;
+  },
+
+  refreshAfterCircleChange() {
+    this.refreshAll();
+    if (window.PointsView) window.PointsView.refreshAll();
+    if (window.CardsPDF) window.CardsPDF.refreshAll();
+  },
+
+  bindCircleManagementModals() {
+    // --- تعديل ---
+    const editSelect = document.getElementById('edit-circle-select');
+    if (editSelect) editSelect.addEventListener('change', () => this.fillEditCircleFields());
+
+    const editForm = document.getElementById('form-edit-circle');
+    if (editForm) {
+      editForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-circle-select').value;
+        const name = document.getElementById('edit-circle-name').value;
+        const prefix = document.getElementById('edit-circle-prefix').value;
+        try {
+          DB.updateCircle(id, { name, prefix });
+          UI.closeModal('modal-edit-circle');
+          this.refreshAfterCircleChange();
+          UI.showToast('تم تحديث الحلقة', 'success');
+        } catch (err) {
+          UI.showToast(err.message || 'تعذر تعديل الحلقة', 'error');
+        }
+      });
+    }
+
+    // --- حذف ---
+    const delSelect = document.getElementById('delete-circle-select');
+    if (delSelect) delSelect.addEventListener('change', () => this.refreshDeleteCircleInfo());
+
+    const confirmBtn = document.getElementById('btn-confirm-delete-circle');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const id = document.getElementById('delete-circle-select').value;
+        const circle = DB.getCircleById(id);
+        if (!circle) return;
+        const moveGroup = document.getElementById('delete-circle-move-group');
+        const moveToId = moveGroup && moveGroup.style.display !== 'none'
+          ? document.getElementById('delete-circle-move-to').value
+          : '';
+        try {
+          DB.deleteCircle(circle.id, moveToId);
+          if (this.state.selectedCircleId === circle.id) this.state.selectedCircleId = 'ALL';
+          UI.closeModal('modal-delete-circle');
+          this.refreshAfterCircleChange();
+          UI.showToast(`تم حذف "${circle.name}" بنجاح`, 'warning');
+        } catch (err) {
+          UI.showToast(err.message || 'تعذر حذف الحلقة', 'error');
+        }
+      });
     }
   },
 
-  // تعديل اسم الحلقة المحددة ورمز معرّفها (الرمز يخص الطلاب الجدد فقط)
-  editActiveCircle() {
-    const circle = DB.getCircleById(this.state.selectedCircleId);
+  openEditCircle() {
+    const circles = DB.getCircles();
+    if (circles.length === 0) {
+      UI.showToast('لا توجد حلقات لتعديلها', 'warning');
+      return;
+    }
+    this.fillCircleSelect(document.getElementById('edit-circle-select'), circles, this.state.selectedCircleId);
+    this.fillEditCircleFields();
+    UI.openModal('modal-edit-circle');
+  },
+
+  fillEditCircleFields() {
+    const circle = DB.getCircleById(document.getElementById('edit-circle-select').value);
     if (!circle) return;
-    const name = window.prompt('اسم الحلقة:', circle.name);
-    if (name === null) return;
-    const prefix = window.prompt('رمز المعرّف للطلاب الجدد (2–4 أحرف/أرقام إنجليزية). المعرّفات القديمة لا تتغير:', circle.prefix || 'QAT');
-    if (prefix === null) return;
-    try {
-      DB.updateCircle(circle.id, { name, prefix });
-      this.refreshAll();
-      if (window.PointsView) window.PointsView.refreshAll();
-      UI.showToast('تم تحديث الحلقة', 'success');
-    } catch (err) {
-      UI.showToast(err.message || 'تعذر تعديل الحلقة', 'error');
+    document.getElementById('edit-circle-name').value = circle.name;
+    document.getElementById('edit-circle-prefix').value = circle.prefix || 'QAT';
+  },
+
+  openDeleteCircle() {
+    const circles = DB.getCircles();
+    if (circles.length === 0) {
+      UI.showToast('لا توجد حلقات لحذفها', 'warning');
+      return;
+    }
+    this.fillCircleSelect(document.getElementById('delete-circle-select'), circles, this.state.selectedCircleId);
+    this.refreshDeleteCircleInfo();
+    UI.openModal('modal-delete-circle');
+  },
+
+  // يعرض عدد طلاب الحلقة المختارة، ويطلب حلقة لنقلهم إليها إن وُجدوا
+  refreshDeleteCircleInfo() {
+    const id = document.getElementById('delete-circle-select').value;
+    const circle = DB.getCircleById(id);
+    const info = document.getElementById('delete-circle-info');
+    const moveGroup = document.getElementById('delete-circle-move-group');
+    const moveSelect = document.getElementById('delete-circle-move-to');
+    const confirmBtn = document.getElementById('btn-confirm-delete-circle');
+    if (!circle) return;
+
+    const count = DB.getStudents({ circleId: circle.id }).length;
+    const others = DB.getCircles().filter((c) => c.id !== circle.id);
+
+    moveGroup.style.display = 'none';
+    confirmBtn.disabled = false;
+
+    if (count === 0) {
+      info.textContent = `لا يوجد طلاب في "${circle.name}".`;
+    } else if (others.length === 0) {
+      info.textContent = `في "${circle.name}" ${count} طالب، ولا توجد حلقة أخرى لنقلهم إليها. أضف حلقة أخرى أولاً.`;
+      confirmBtn.disabled = true;
+    } else {
+      info.textContent = `في "${circle.name}" ${count} طالب، وسيُنقلون إلى الحلقة التي تختارها:`;
+      this.fillCircleSelect(moveSelect, others);
+      moveGroup.style.display = '';
     }
   },
 
@@ -368,7 +529,7 @@ const StudentsView = {
       emptyDiv.innerHTML = `
         <div class="empty-state-icon">🕌</div>
         <h3>لا يوجد طلاب مطابقون للعرض حالياً</h3>
-        <p>اضغط على زر "إضافة طالب جديد" في الأعلى لتسجيل الطلاب في الحلقة أو غيّر كلمات البحث.</p>
+        <p>اضغط على الزر العائم ＋ ثم "إضافة طالب جديد" لتسجيل الطلاب في الحلقة، أو غيّر كلمات البحث.</p>
       `;
       grid.appendChild(emptyDiv);
       return;
@@ -438,24 +599,14 @@ const StudentsView = {
   },
 
   /* ========================================================================
-     5. تحديث بطاقات الإحصائيات العلوية في اللوحة الرئيسية
+     5. تحديث أرقام نافذة المعلومات (إجمالي الحلقات والطلاب)
      ======================================================================== */
 
   updateDashboardStats() {
-    const totalCirclesEl = document.getElementById('stat-total-circles');
-    const totalStudentsEl = document.getElementById('stat-total-students');
-    const filteredStudentsEl = document.getElementById('stat-filtered-students');
-
-    const circlesCount = DB.getCircles().length;
-    const allStudentsCount = DB.getStudents({ circleId: 'ALL' }).length;
-    const filteredCount = DB.getStudents({
-      circleId: this.state.selectedCircleId,
-      searchQuery: this.state.searchQuery
-    }).length;
-
-    if (totalCirclesEl) totalCirclesEl.textContent = circlesCount;
-    if (totalStudentsEl) totalStudentsEl.textContent = allStudentsCount;
-    if (filteredStudentsEl) filteredStudentsEl.textContent = filteredCount;
+    const totalCirclesEl = document.getElementById('info-total-circles');
+    const totalStudentsEl = document.getElementById('info-total-students');
+    if (totalCirclesEl) totalCirclesEl.textContent = DB.getCircles().length;
+    if (totalStudentsEl) totalStudentsEl.textContent = DB.getStudents({ circleId: 'ALL' }).length;
   }
 };
 

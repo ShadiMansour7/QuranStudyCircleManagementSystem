@@ -225,11 +225,19 @@ const UI = {
       tab.classList.toggle('active', tab.getAttribute('data-target') === targetSectionId);
     });
 
+    // الزر العائم يظهر في اللوحة الرئيسية فقط
+    document.body.classList.toggle('on-dashboard', targetSectionId === 'view-dashboard');
+
     // إظهار القسم المطلوب وإخفاء البقية
     const sections = document.querySelectorAll('.view-section');
     sections.forEach((sec) => {
       sec.classList.toggle('active', sec.id === targetSectionId);
     });
+
+    // إعادة حساب حالة التصاق قسم البحث (يتصفّر عند مغادرة اللوحة الرئيسية)
+    if (window.StudentsView && typeof window.StudentsView.syncStickyState === 'function') {
+      window.StudentsView.syncStickyState();
+    }
 
     // إيقاف كاميرا الـ QR تلقائياً في حال غادر المستخدم واجهة النقاط
     if (targetSectionId !== 'view-points' && window.QRScanner && typeof window.QRScanner.stopCamera === 'function') {

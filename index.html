@@ -18,7 +18,7 @@
   <!-- ملف التنسيقات الرئيسي -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body class="on-dashboard">
 
   <!-- ====================================================================
        الرأس وشريط التنقل الرئيسي (Header & Main Navigation)
@@ -68,45 +68,13 @@
          القسم 1: اللوحة الرئيسية (Dashboard - الحلقات والطلاب حصراً)
          ------------------------------------------------------------------ -->
     <section id="view-dashboard" class="view-section active">
-      <!-- بطاقات الإحصائيات السريعة -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-info">
-            <h3>إجمالي الحلقات</h3>
-            <div class="stat-value" id="stat-total-circles">0</div>
-          </div>
-          <div class="stat-icon">📚</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-info">
-            <h3>إجمالي الطلاب المسجلين</h3>
-            <div class="stat-value" id="stat-total-students">0</div>
-          </div>
-          <div class="stat-icon">👥</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-info">
-            <h3>طلاب الحلقة المعروضة</h3>
-            <div class="stat-value" id="stat-filtered-students">0</div>
-          </div>
-          <div class="stat-icon">🎯</div>
-        </div>
-      </div>
-
-      <!-- عنوان القسم وأزرار الإضافة -->
+      <!-- عنوان القسم (الإضافة والتعديل والحذف والمعلومات عبر الزر العائم) -->
       <div class="section-header">
         <h2 class="section-title">📋 إدارة الحلقات وبيانات الطلاب</h2>
-        <div class="action-group">
-          <button type="button" class="btn btn-outline" id="btn-open-add-circle">
-            <span>➕</span>
-            <span>إضافة حلقة جديدة</span>
-          </button>
-          <button type="button" class="btn btn-primary" id="btn-open-add-student">
-            <span>👤➕</span>
-            <span>إضافة طالب جديد</span>
-          </button>
-        </div>
       </div>
+
+      <!-- حارس الالتصاق: يراقبه IntersectionObserver لمعرفة ملامسة قسم البحث للشريط العلوي -->
+      <div id="finder-sentinel" aria-hidden="true"></div>
 
       <!-- قسم البحث والحلقات (واحد): البحث فوق شريط الحلقات -->
       <div class="dashboard-finder" id="dashboard-finder">
@@ -134,9 +102,6 @@
           <div class="circles-list" id="dashboard-circles-list">
             <!-- يتم توليد أزرار الحلقات هنا ديناميكياً عبر js/students.js -->
           </div>
-          <button type="button" class="btn btn-danger-outline btn-sm" id="btn-delete-active-circle" style="display: none;">
-            🗑️ حذف الحلقة المحددة
-          </button>
         </div>
       </div>
 
@@ -850,6 +815,115 @@
   </div>
 
   <!-- حاوية إشعارات Toast السفلية غير المعطلة للعمل -->
+  <!-- ====================================================================
+       الزر العائم (FAB) للوحة الرئيسية: يفتح قائمة الإجراءات
+       ==================================================================== -->
+  <div class="fab-backdrop" id="fab-backdrop" hidden></div>
+  <div class="fab-wrap" id="fab-wrap">
+    <div class="fab-menu" id="fab-menu" role="menu" aria-label="إجراءات اللوحة الرئيسية">
+      <button type="button" class="fab-item" role="menuitem" data-fab-action="add-student">
+        <span class="fab-item-icon">👤➕</span><span>إضافة طالب جديد</span>
+      </button>
+      <button type="button" class="fab-item" role="menuitem" data-fab-action="add-circle">
+        <span class="fab-item-icon">➕</span><span>إضافة حلقة جديدة</span>
+      </button>
+      <button type="button" class="fab-item" role="menuitem" data-fab-action="edit-circle">
+        <span class="fab-item-icon">✏️</span><span>تعديل حلقة</span>
+      </button>
+      <button type="button" class="fab-item fab-item-danger" role="menuitem" data-fab-action="delete-circle">
+        <span class="fab-item-icon">🗑️</span><span>حذف حلقة</span>
+      </button>
+      <button type="button" class="fab-item" role="menuitem" data-fab-action="info">
+        <span class="fab-item-icon">ℹ️</span><span>معلومات</span>
+      </button>
+    </div>
+    <button type="button" class="fab-main" id="fab-main" aria-label="القائمة السريعة" aria-haspopup="menu" aria-expanded="false" aria-controls="fab-menu">
+      <span class="fab-main-icon" aria-hidden="true">+</span>
+    </button>
+  </div>
+
+  <!-- نافذة تعديل حلقة: اختيار الحلقة ثم تعديل اسمها ورمز معرّفها -->
+  <div class="modal-overlay" id="modal-edit-circle" role="dialog" aria-modal="true" aria-labelledby="modal-edit-circle-title" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-edit-circle-title">✏️ تعديل حلقة</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-edit-circle" aria-label="إغلاق">&times;</button>
+      </div>
+      <form id="form-edit-circle">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="edit-circle-select">اختر الحلقة *</label>
+            <select id="edit-circle-select" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-circle-name">اسم الحلقة *</label>
+            <input type="text" id="edit-circle-name" class="form-control" required />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="edit-circle-prefix">رمز المعرّف (2–4 أحرف أو أرقام إنجليزية) *</label>
+            <input type="text" id="edit-circle-prefix" class="form-control" maxlength="4" dir="ltr" style="text-transform: uppercase;" pattern="[A-Za-z0-9]{2,4}" required />
+            <p class="form-hint">الرمز الجديد يخص الطلاب الجدد فقط، أما معرّفات الطلاب الحاليين فلا تتغير.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-edit-circle">إلغاء</button>
+          <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- نافذة حذف حلقة: اختيار الحلقة (ونقل طلابها إن وُجدوا) ثم زر التأكيد -->
+  <div class="modal-overlay" id="modal-delete-circle" role="dialog" aria-modal="true" aria-labelledby="modal-delete-circle-title" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-delete-circle-title">🗑️ حذف حلقة</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-delete-circle" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="delete-circle-select">اختر الحلقة المراد حذفها *</label>
+          <select id="delete-circle-select" class="form-control"></select>
+        </div>
+        <p class="delete-circle-info" id="delete-circle-info"></p>
+        <div class="form-group" id="delete-circle-move-group" style="display: none;">
+          <label class="form-label" for="delete-circle-move-to">نقل طلاب الحلقة إلى *</label>
+          <select id="delete-circle-move-to" class="form-control"></select>
+        </div>
+        <p class="form-hint form-hint-danger">الحذف نهائي ولا يمكن التراجع عنه.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="modal-delete-circle">إلغاء</button>
+        <button type="button" class="btn btn-danger" id="btn-confirm-delete-circle">🗑️ تأكيد الحذف</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة المعلومات: إجمالي الحلقات والطلاب -->
+  <div class="modal-overlay" id="modal-info" role="dialog" aria-modal="true" aria-labelledby="modal-info-title" aria-hidden="true">
+    <div class="modal-box" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-info-title">ℹ️ معلومات</h3>
+        <button type="button" class="modal-close" data-close-modal="modal-info" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-num" id="info-total-circles">0</div>
+            <div class="info-label">📚 إجمالي الحلقات</div>
+          </div>
+          <div class="info-item">
+            <div class="info-num" id="info-total-students">0</div>
+            <div class="info-label">👥 إجمالي الطلاب</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-modal="modal-info">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <!-- ====================================================================
