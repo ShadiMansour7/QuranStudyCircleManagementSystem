@@ -491,5 +491,8 @@ const UI = {
 
 window.UI = UI;
 document.addEventListener('DOMContentLoaded', () => {
-  UI.init();
+  UI.init(    // أخطاء الحفظ غير الملتقطة (لها cause) تظهر كإشعار بدل ما تضيع بالكونسول
+    window.addEventListener('error', (e) => {
+      if (e.error && e.error.cause) this.showToast(e.error.message, 'error', 5000);
+    }));
 });

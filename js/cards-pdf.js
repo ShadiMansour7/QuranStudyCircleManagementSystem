@@ -69,6 +69,8 @@ const CardsPDF = {
 
   loadSavedDesignIntoInputs() {
     this.flushDesignSave(); // لا نكتب فوق تعديل لم يُحفظ بعد
+    this._orientation = this.getStudio().orientation;
+    this.syncInputRanges();
     const { front, back } = this.getActiveLayout();
 
     this._setInputValue('cfg-name-x', front.nameX);
@@ -343,6 +345,7 @@ const CardsPDF = {
   _fontReady: {},
   _fontCss: '',
   _orientation: '',
+  _bgLoadedFor: '',
 
   // حالة الاستوديو (الاتجاه والخط وتصميم كل اتجاه) محفوظة ضمن إعدادات DB فتدخل النسخ الاحتياطية
   getStudio() {
@@ -490,7 +493,10 @@ const CardsPDF = {
   },
 
   loadBackgrounds() {
-    const saved = this._readBgStore()[this.getOrientation()] || {};
+    const o = this.getOrientation();
+    if (this._bgLoadedFor === o) return; // الصور محمّلة أصلاً لهذا الاتجاه
+    this._bgLoadedFor = o;
+    const saved = this._readBgStore()[o] || {};
     ['front', 'back'].forEach((side) => {
       this.state[`${side}BgImage`] = null;
       if (!saved[side]) return;

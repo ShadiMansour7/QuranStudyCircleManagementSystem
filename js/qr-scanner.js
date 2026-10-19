@@ -193,8 +193,11 @@ const QRScanner = {
       UI.showToast(`الكود (${code}) غير مسجل لأي طالب!`, 'error', 2000);
       return;
     }
-    if (this.presentIds.includes(student.id)) {
-      UI.showToast(`${student.name} مسجل حاضراً مسبقاً`, 'warning', 2000);
+      if (this.presentIds.includes(student.id)) {
+      if (now - (this._lastDupToast || 0) > 6000) {
+        this._lastDupToast = now;
+        UI.showToast(`${student.name} مسجل حاضراً مسبقاً`, 'warning', 2000);
+      }
       return;
     }
 
