@@ -177,6 +177,13 @@ const StudentsView = {
 
     let headerH = Math.round(header.getBoundingClientRect().height);
 
+    // عرض الصفحة بدون شريط التمرير العمودي: خلفية الالتصاق بعرض الشاشة كاملة دون أي تمرير أفقي
+    const root = document.documentElement;
+    const syncDocWidth = () => root.style.setProperty('--doc-w', `${root.clientWidth}px`);
+    syncDocWidth();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(syncDocWidth).observe(root);
+    window.addEventListener('resize', syncDocWidth);
+
     // الحالة تُحسب من موضع الحارس مباشرة (لا تعتمد على إشعارات المراقب وحدها)
     this.syncStickyState = () => {
       const r = sentinel.getBoundingClientRect();
@@ -250,6 +257,7 @@ const StudentsView = {
     const backdrop = document.getElementById('fab-backdrop');
     if (!main || !wrap) return;
     wrap.classList.toggle('open', open);
+    main.classList.toggle('is-active', open);
     main.setAttribute('aria-expanded', String(open));
     if (backdrop) backdrop.hidden = !open;
   },
