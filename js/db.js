@@ -7,6 +7,8 @@ const DB_STORAGE_KEY = 'QATANA_MOSQUE_QURAN_DB_V1';
 // إصدار هيكل البيانات: 1 = نسخ قديمة بلا حقل إصدار، 2 = أول إصدار يحمل schemaVersion.
 // ارفعه عند تغيير هيكل البيانات بطريقة تحتاج ترحيلاً داخل _mergeDefaults.
 const DB_SCHEMA_VERSION = 2;
+// الحد الأقصى لسجل نقاط الطالب: أحدث (MAX-1) قيود + قيد خامس واحد = مجموع القيود الأقدم
+const MAX_POINTS_LOG_ENTRIES = 5;
 
 const DEFAULT_DB_STATE = {
   lastStudentNumber: 1000,
@@ -69,7 +71,11 @@ const DB = {
     }
     if (!raw) return this._resetToDefaults();
     try {
-      this._cache = this._mergeDefaults(JSON.parse(raw));
+      this._logsCompacted = false;
+      const merged = this._mergeDefaults(JSON.parse(raw));
+      this._cache = merged;
+      // بيانات قديمة فيها سجلات أكثر من الحد: تُضغط مرة واحدة ويُحفظ الناتج (مع نسخة احتياطية أولاً)
+      if (this._logsCompacted) this._persistCompactedLogs(raw, merged);
       return this._clone(this._cache);
     } catch (err) {
       console.error('خطأ في قراءة قاعدة البيانات، سيتم استعادة الهيكل الافتراضي:', err);
@@ -81,6 +87,68 @@ const DB = {
       }
       return this._resetToDefaults();
     }
+  },
+
+  /**
+   * ترحيل لمرة واحدة: حفظ البيانات بعد ضغط سجلات النقاط. تُحفظ نسخة من النص الأصلي أولاً
+   * (QATANA_MOSQUE_QURAN_DB_V1_PRECOMPACT_BACKUP) لأن الضغط يُفقد تفاصيل القيود القديمة.
+   * إن تعذّر حفظ النسخة لا يُحفظ الضغط (يبقى في الذاكرة فقط وتُعاد المحاولة في التشغيل القادم).
+   */
+  _persistCompactedLogs(rawText, merged) {
+    const backupKey = DB_STORAGE_KEY + '_PRECOMPACT_BACKUP';
+    try {
+      if (localStorage.getItem(backupKey) === null) localStorage.setItem(backupKey, rawText);
+    } catch (e) {
+      console.warn('تعذر حفظ النسخة الاحتياطية قبل ضغط السجلات؛ أُجّل الضغط:', e);
+      return;
+    }
+    try {
+      this.saveData(this._clone(merged));
+    } catch (e) {
+      console.warn('تعذر حفظ السجلات المضغوطة:', e);
+    }
+    this._cache = merged;
+  },
+
+  /**
+   * ضغط سجل نقاط طالب (الأحدث أولاً): إن زاد على MAX_POINTS_LOG_ENTRIES يُبقى أحدث (MAX-1) قيود
+   * وتُطوى البقية في قيد واحد مجمَّع { summary: true, change: المجموع, count: عدد المطوي }.
+   * تُرجع المصفوفة نفسها إن لم يلزم تغيير (ليُعرف إن حدث ضغط).
+   */
+  _compactLog(log) {
+    const normals = [];
+    const sums = [];
+    log.forEach((e) => {
+      if (!e || typeof e !== 'object') return;
+      (e.summary ? sums : normals).push(e);
+    });
+    const total = normals.length + (sums.length ? 1 : 0);
+    if (total <= MAX_POINTS_LOG_ENTRIES && sums.length <= 1 && normals.length + sums.length === log.length) return log;
+
+    const keepN = total > MAX_POINTS_LOG_ENTRIES ? MAX_POINTS_LOG_ENTRIES - 1 : normals.length;
+    const keep = normals.slice(0, keepN);
+    const folded = normals.slice(keepN);
+    const change =
+      sums.reduce((a, e) => a + (Number(e.change) || 0), 0) +
+      folded.reduce((a, e) => a + (Number(e.change) || 0), 0);
+    const count = sums.reduce((a, e) => a + (Number(e.count) || 0), 0) + folded.length;
+    const summary = {
+      id: (sums[0] && sums[0].id) || 'LOG-SUM-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
+      change,
+      operation: change >= 0 ? 'add' : 'deduct',
+      reason: 'مجموع السجلات القديمة',
+      timestamp: (folded[0] && folded[0].timestamp) || (sums[0] && sums[0].timestamp) || new Date().toISOString(),
+      summary: true,
+      count
+    };
+    return [...keep, summary];
+  },
+
+  /** إضافة قيد في أول سجل الطالب (الأحدث أولاً) ثم ضغط السجل إن لزم */
+  _pushLog(student, entry) {
+    if (!Array.isArray(student.pointsLog)) student.pointsLog = [];
+    student.pointsLog.unshift(entry);
+    student.pointsLog = this._compactLog(student.pointsLog);
   },
 
   _resetToDefaults() {
@@ -133,11 +201,17 @@ const DB = {
       parentPhone: String(st.parentPhone || '').trim(),
       circleId: String(st.circleId || ''),
       points: Number(st.points) || 0,
-      pointsLog: Array.isArray(st.pointsLog) ? st.pointsLog : [],
+      pointsLog: this._compactStudentLog(Array.isArray(st.pointsLog) ? st.pointsLog : []),
       createdAt: st.createdAt || new Date().toISOString()
     }));
 
     return merged;
+  },
+
+  _compactStudentLog(log) {
+    const out = this._compactLog(log);
+    if (out !== log) this._logsCompacted = true;
+    return out;
   },
 
   /**
@@ -270,11 +344,12 @@ const DB = {
     if (!st) throw new Error('الطالب غير موجود.');
     const entry = (st.pointsLog || []).find((l) => l.id === logId);
     if (!entry) throw new Error('العملية غير موجودة.');
+    if (entry.summary) throw new Error('لا يمكن التراجع عن سجل المجموع (يضم عمليات قديمة).');
     if (entry.reverted || entry.revertOf) throw new Error('لا يمكن التراجع عن هذه العملية.');
     const change = -Number(entry.change);
     st.points = (Number(st.points) || 0) + change;
     entry.reverted = true;
-    st.pointsLog.unshift({
+    this._pushLog(st, {
       id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
       change,
       operation: change > 0 ? 'add' : 'deduct',
@@ -489,11 +564,8 @@ const DB = {
       timestamp: new Date().toISOString()
     };
 
-    if (!Array.isArray(student.pointsLog)) {
-      student.pointsLog = [];
-    }
-    // إضافة السجل الجديد في بداية المصفوفة ليكون الأحدث في الأعلى
-    student.pointsLog.unshift(logEntry);
+    // إضافة السجل الجديد في بداية المصفوفة ليكون الأحدث في الأعلى (مع الضغط عند تجاوز الحد)
+    this._pushLog(student, logEntry);
 
     this.saveData(data);
     return {
@@ -544,10 +616,7 @@ const DB = {
       } else if (!updatedStudents.includes(data.students[idx])) {
         const st = data.students[idx];
         st.points = (Number(st.points) || 0) + signedChange;
-        if (!Array.isArray(st.pointsLog)) {
-          st.pointsLog = [];
-        }
-        st.pointsLog.unshift({
+        this._pushLog(st, {
           id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
           change: signedChange,
           operation: operationType === 'deduct' ? 'deduct' : 'add',
@@ -618,8 +687,7 @@ const DB = {
     const nowIso = new Date().toISOString();
     const addLog = (st, change, operation, reason) => {
       st.points = (Number(st.points) || 0) + change;
-      if (!Array.isArray(st.pointsLog)) st.pointsLog = [];
-      st.pointsLog.unshift({
+      this._pushLog(st, {
         id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 100000),
         change,
         operation,

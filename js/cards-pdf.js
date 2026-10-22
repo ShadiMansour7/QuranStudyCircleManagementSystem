@@ -24,7 +24,8 @@ const CardsPDF = {
     selectedCircleId: 'ALL',
     selectedStudentIds: new Set(),
     frontBgImage: null,
-    backBgImage: null
+    backBgImage: null,
+    bgNames: {} // أسماء ملفات الخلفيات المرفوعة في هذه الجلسة (للعرض فقط)
   },
 
   init() {
@@ -172,6 +173,8 @@ const CardsPDF = {
      ======================================================================== */
 
   bindEvents() {
+    this.bindStudioUi();
+
     // لا نفقد تعديلاً مؤجَّلاً عند إخفاء الصفحة أو إغلاقها
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.flushDesignSave();
@@ -230,6 +233,7 @@ const CardsPDF = {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         this.loadImageFile(file, (img) => {
+          this.state.bgNames.front = file.name;
           this.state.frontBgImage = img;
           this.persistBackground('front', img);
           this.renderLivePreview();
@@ -243,6 +247,7 @@ const CardsPDF = {
     if (clearFrontBtn) {
       clearFrontBtn.addEventListener('click', () => {
         this.state.frontBgImage = null;
+        delete this.state.bgNames.front;
         this.persistBackground('front', null);
         const input = document.getElementById('card-front-bg-input');
         if (input) input.value = '';
@@ -257,6 +262,7 @@ const CardsPDF = {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         this.loadImageFile(file, (img) => {
+          this.state.bgNames.back = file.name;
           this.state.backBgImage = img;
           this.persistBackground('back', img);
           this.renderLivePreview();
@@ -270,6 +276,7 @@ const CardsPDF = {
     if (clearBackBtn) {
       clearBackBtn.addEventListener('click', () => {
         this.state.backBgImage = null;
+        delete this.state.bgNames.back;
         this.persistBackground('back', null);
         const input = document.getElementById('card-back-bg-input');
         if (input) input.value = '';
@@ -381,37 +388,33 @@ const CardsPDF = {
     };
   },
 
-  // إضافة خانة الاتجاه وقائمة الخطوط بجانب زر استعادة التصميم
+  // ربط قائمة شكل البطاقة (عرضية/طولية) وقائمة الخطوط (عناصرهما ثابتة في index.html)
   mountStudioExtras() {
-    const resetBtn = document.getElementById('btn-reset-card-design');
-    if (!resetBtn || document.getElementById('cfg-card-landscape')) return;
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.5rem 0;';
-    wrap.innerHTML = `
-      <label style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;font-weight:700;">
-        <input type="checkbox" id="cfg-card-landscape"> بطاقة عرضية (105×74.25 مم)
-      </label>
-      <label style="display:inline-flex;align-items:center;gap:.4rem;">الخط
-        <select id="cfg-card-font" class="form-control" style="width:auto;"></select>
-      </label>
-      <small id="cfg-font-hint" style="color:var(--text-muted);"></small>`;
-    resetBtn.parentNode.insertBefore(wrap, resetBtn);
-    document.getElementById('cfg-card-landscape').addEventListener('change', (e) =>
-      this.applyOrientation(e.target.checked ? 'landscape' : 'portrait')
-    );
-    document.getElementById('cfg-card-font').addEventListener('change', (e) => this.applyFont(e.target.value));
+    const orient = document.getElementById('cfg-card-orientation');
+    const font = document.getElementById('cfg-card-font');
+    if (!orient || orient.dataset.bound) return;
+    orient.dataset.bound = '1';
+    orient.addEventListener('change', (e) => this.applyOrientation(e.target.value === 'landscape' ? 'landscape' : 'portrait'));
+    if (font) font.addEventListener('change', (e) => this.applyFont(e.target.value));
   },
 
   // مزامنة الخانة والخط وحدود الإحداثيات والخلفيات مع الاتجاه المحفوظ
   syncStudioControls() {
     const studio = this.getStudio();
     this._orientation = studio.orientation;
-    const cb = document.getElementById('cfg-card-landscape');
-    if (cb) cb.checked = studio.orientation === 'landscape';
+    const orientSel = document.getElementById('cfg-card-orientation');
+    if (orientSel) orientSel.value = studio.orientation;
+    this.updateOrientHint(studio.orientation);
     this.fillFontSelect();
     this._updateFontCss();
     this.syncInputRanges();
     this.loadBackgrounds();
+  },
+
+  // أبعاد الطباعة الفعلية تحت قائمة شكل البطاقة
+  updateOrientHint(orientation) {
+    const hint = document.getElementById('cfg-orient-hint');
+    if (hint) hint.textContent = orientation === 'landscape' ? '105 × 74.25 مم' : '74.25 × 105 مم';
   },
 
   syncInputRanges() {
@@ -430,6 +433,7 @@ const CardsPDF = {
     studio.orientation = orientation;
     this.saveStudio(studio);
     this._orientation = orientation;
+    this.updateOrientHint(orientation);
     this.loadSavedDesignIntoInputs();
     this.syncInputRanges();
     this.loadBackgrounds();
@@ -497,6 +501,7 @@ const CardsPDF = {
     if (this._bgLoadedFor === o) return; // الصور محمّلة أصلاً لهذا الاتجاه
     this._bgLoadedFor = o;
     const saved = this._readBgStore()[o] || {};
+    this.state.bgNames = {};
     ['front', 'back'].forEach((side) => {
       this.state[`${side}BgImage`] = null;
       if (!saved[side]) return;
@@ -693,6 +698,69 @@ const CardsPDF = {
 
     this.drawFrontCardOnCanvas(frontCanvas, previewStudent, config.front, 1);
     this.drawBackCardOnCanvas(backCanvas, config.back, 1);
+    this.syncValueBadges();
+    this.syncBgUploaders();
+  },
+
+  /* ========================================================================
+     واجهة الاستوديو: قيم السلايدرات، بطاقات رفع الخلفيات، تبديل الوجه
+     ======================================================================== */
+
+  // إظهار القيمة الحالية بجانب كل سلايدر
+  syncValueBadges() {
+    document.querySelectorAll('#view-cards output[data-for]').forEach((o) => {
+      const input = document.getElementById(o.getAttribute('data-for'));
+      if (input) o.textContent = `${input.value}px`;
+    });
+  },
+
+  // معاينة مصغّرة واسم ملف وحالة زر المسح لكل خلفية
+  syncBgUploaders() {
+    ['front', 'back'].forEach((side) => {
+      const img = this.state[`${side}BgImage`];
+      const thumb = document.getElementById(`bg-thumb-${side}`);
+      const name = document.getElementById(`bg-name-${side}`);
+      const clearBtn = document.getElementById(`btn-clear-${side}-bg`);
+      const wrap = thumb && thumb.closest('.bg-uploader');
+      if (!thumb || !name) return;
+      const src = img ? img.src : '';
+      if (thumb.dataset.src !== src) {
+        thumb.dataset.src = src;
+        thumb.style.backgroundImage = src ? `url("${src}")` : '';
+        thumb.textContent = src ? '' : '🖼️';
+      }
+      name.textContent = img ? this.state.bgNames[side] || 'صورة محفوظة' : 'لم تُختر صورة بعد';
+      if (clearBtn) clearBtn.disabled = !img;
+      if (wrap) wrap.classList.toggle('has-image', !!img);
+    });
+  },
+
+  // تبديل الوجه المعروض في المعاينة (على الشاشات الصغيرة يظهر وجه واحد)
+  setPreviewFace(face) {
+    const pair = document.getElementById('canvas-pair');
+    if (!pair || (face !== 'front' && face !== 'back')) return;
+    pair.setAttribute('data-face', face);
+    document.querySelectorAll('[data-face-btn]').forEach((btn) => {
+      const on = btn.getAttribute('data-face-btn') === face;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', String(on));
+    });
+  },
+
+  bindStudioUi() {
+    const view = document.getElementById('view-cards');
+    if (!view || view.dataset.uiBound) return;
+    view.dataset.uiBound = '1';
+
+    view.querySelectorAll('[data-face-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => this.setPreviewFace(btn.getAttribute('data-face-btn')));
+    });
+
+    // فتح قسم أو تعديل حقل فيه يعرض وجهه تلقائياً في المعاينة
+    view.querySelectorAll('details.studio-acc[data-face]').forEach((d) => {
+      d.addEventListener('toggle', () => { if (d.open) this.setPreviewFace(d.getAttribute('data-face')); });
+      d.addEventListener('input', () => this.setPreviewFace(d.getAttribute('data-face')));
+    });
   },
 
   /**
@@ -734,7 +802,7 @@ const CardsPDF = {
 
     const qrCanvas = this._createQrCanvas(student.id, qrSizeScaled);
     if (qrCanvas) {
-      // إطار أبيض خفيف حول الـ QR لضمان سهولة القراءة الضوئية حتى فوق الخلفيات الداكنة
+      // خلفية بيضاء حول الـ QR (منطقة هادئة) لضمان القراءة الضوئية حتى فوق الخلفيات الداكنة، بلا إطار ملوّن
       const pad = Math.round(6 * scale);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(
@@ -743,28 +811,9 @@ const CardsPDF = {
         qrSizeScaled + pad * 2,
         qrSizeScaled + pad * 2
       );
-      ctx.strokeStyle = 'rgba(5, 150, 105, 0.35)';
-      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
-      ctx.strokeRect(
-        qrXScaled - pad,
-        qrYScaled - pad,
-        qrSizeScaled + pad * 2,
-        qrSizeScaled + pad * 2
-      );
 
       ctx.drawImage(qrCanvas, qrXScaled, qrYScaled, qrSizeScaled, qrSizeScaled);
     }
-
-    // 5. كتابة رمز المعرّف (ID) بخط صغير أسفل الـ QR مباشرة للرجوع اليدوي عند الحاجة
-    ctx.direction = 'ltr';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#475569';
-    ctx.font = `bold ${Math.round(11 * scale)}px monospace`;
-    ctx.fillText(
-      student.id,
-      qrXScaled + qrSizeScaled / 2,
-      qrYScaled + qrSizeScaled + Math.round(14 * scale)
-    );
 
     ctx.restore();
   },
@@ -853,8 +902,60 @@ const CardsPDF = {
     }
   },
 
+  _qrMatrixCache: new Map(),
+
   /**
-   * توليد عنصر Canvas يحتوي على رمز الـ QR لمعرّف الطالب فقط عبر مكتبة QRious
+   * مصفوفة وحدات الـ QR (true = وحدة سوداء). تُستخرج مرة واحدة لكل نص من رسم QRious بدقة صغيرة
+   * (كل وحدة بضع بكسلات)، ثم تُخزَّن. يُرسم الرمز بعدها بأي حجم دون هامش.
+   * (QRious نفسه يرسم كل وحدة بعدد صحيح من البكسلات فيترك هامشاً أبيض ولا يكبر الرمز إلا عند مضاعفات عدد الوحدات.)
+   */
+  _getQrMatrix(text) {
+    const key = String(text || 'QAT-1001').trim();
+    if (this._qrMatrixCache.has(key)) return this._qrMatrixCache.get(key);
+
+    let matrix = null;
+    try {
+      const SRC = 330; // كل وحدة >= 8 بكسل حتى أكبر إصدار متوقع، فيكفي أخذ العيّنة من مركزها
+      const tmp = document.createElement('canvas');
+      tmp.width = SRC;
+      tmp.height = SRC;
+      new QRious({ element: tmp, value: key, size: SRC, level: 'H', background: '#ffffff', foreground: '#000000', padding: 0 });
+      const ctx = tmp.getContext('2d', { willReadFrequently: true });
+      const px = ctx.getImageData(0, 0, SRC, SRC).data;
+      const dark = (x, y) => px[(y * SRC + x) * 4] < 128;
+
+      // زاوية أول نمط تحديد (finder) أعلى اليسار، ثم عرض وحدته (النمط 7 وحدات عرضاً)
+      let d = 0;
+      while (d < SRC && !dark(d, d)) d++;
+      let run = 0;
+      while (d + run < SRC && dark(d + run, d)) run++;
+      // آخر بكسل داكن في هذا الصف = الحافة اليمنى للرمز (نهاية نمط التحديد الأيمن)
+      let right = SRC - 1;
+      while (right > d && !dark(right, d)) right--;
+
+      const m = run / 7;
+      const n = Math.round((right - d + 1) / m);
+      if (m >= 1 && n >= 21 && n <= 177 && (n - 17) % 4 === 0) {
+        const cell = (right - d + 1) / n;
+        matrix = [];
+        for (let r = 0; r < n; r++) {
+          const row = [];
+          for (let c = 0; c < n; c++) {
+            row.push(dark(Math.floor(d + (c + 0.5) * cell), Math.floor(d + (r + 0.5) * cell)));
+          }
+          matrix.push(row);
+        }
+      }
+    } catch (e) {
+      matrix = null;
+    }
+    this._qrMatrixCache.set(key, matrix);
+    return matrix;
+  },
+
+  /**
+   * توليد عنصر Canvas يحتوي على رمز الـ QR لمعرّف الطالب فقط. يملأ المربع sizePx × sizePx بالكامل
+   * بلا هامش وبأي حجم (تغيير بكسل واحد يظهر فوراً).
    */
   _createQrCanvas(studentIdText, sizePx) {
     const qrCanvas = document.createElement('canvas');
@@ -862,6 +963,23 @@ const CardsPDF = {
     qrCanvas.height = sizePx;
 
     if (typeof QRious !== 'undefined') {
+      const matrix = this._getQrMatrix(studentIdText);
+      if (matrix) {
+        const ctx = qrCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sizePx, sizePx);
+        ctx.fillStyle = '#000000';
+        const n = matrix.length;
+        const edge = (i) => Math.round((i * sizePx) / n); // حدود أعداد صحيحة متصلة: بلا فجوات ولا تراكم
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (matrix[r][c]) ctx.fillRect(edge(c), edge(r), edge(c + 1) - edge(c), edge(r + 1) - edge(r));
+          }
+        }
+        return qrCanvas;
+      }
+
+      // احتياطي: رسم QRious مباشرة إن تعذّر استخراج المصفوفة
       new QRious({
         element: qrCanvas,
         value: String(studentIdText || 'QAT-1001').trim(),

@@ -102,6 +102,7 @@ const UI = {
   init() {
     this.applySavedThemeAndMode();
     this.bindNavigationTabs();
+    this.restoreLastTab();
     this.bindModalCloseEvents();
     this.bindThemeAndModeControls();
     this.bindBackupExportImport();
@@ -218,7 +219,28 @@ const UI = {
     });
   },
 
+  // البقاء في نفس الواجهة بعد تحديث الصفحة (sessionStorage: يبقى مع التحديث فقط)
+  LAST_TAB_KEY: 'QATANA_LAST_TAB',
+
+  restoreLastTab() {
+    let saved = null;
+    try {
+      saved = sessionStorage.getItem(this.LAST_TAB_KEY);
+    } catch (e) {
+      return;
+    }
+    // نقبل فقط تبويباً معروفاً غير الرئيسية (الرئيسية هي الافتراضية أصلاً)
+    const known = [...document.querySelectorAll('.nav-tab')].map((t) => t.getAttribute('data-target'));
+    if (saved && saved !== 'view-dashboard' && known.includes(saved)) this.switchTab(saved);
+  },
+
   switchTab(targetSectionId) {
+    try {
+      sessionStorage.setItem(this.LAST_TAB_KEY, targetSectionId);
+    } catch (e) {
+      /* تجاهل: التخزين غير متاح */
+    }
+
     // تحديث التبويب النشط
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach((tab) => {
@@ -480,20 +502,21 @@ const UI = {
       .replace(/'/g, '&#039;');
   },
 
+  /**
+   * تاريخ ووقت مختصران بأرقام إنكليزية فقط وبلا أسماء أشهر: 21/10/2026 3:45 PM
+   * (يوم/شهر/سنة ثم الوقت بصيغة 12 ساعة). يُحاط بعزل LTR كي لا يعكس الاتجاه العربي ترتيبه.
+   */
   formatDateTimeAr(isoString) {
     if (!isoString) return '';
-    try {
-      const d = new Date(isoString);
-      return d.toLocaleString('ar-SY', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return isoString;
-    }
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return String(isoString);
+    const pad = (n) => String(n).padStart(2, '0');
+    const h24 = d.getHours();
+    const h12 = h24 % 12 || 12;
+    const text =
+      `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ` +
+      `${h12}:${pad(d.getMinutes())} ${h24 >= 12 ? 'PM' : 'AM'}`;
+    return `\u2066${text}\u2069`;
   }
 };
 

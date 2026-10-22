@@ -270,13 +270,17 @@ const PointsView = {
           const formattedAmount = isPositive ? `+${entry.change}` : `${entry.change}`;
           const item = document.createElement('div');
           item.className = 'log-item';
+          const isSummary = !!entry.summary;
+          const reasonText = isSummary
+            ? `📦 مجموع السجلات القديمة${entry.count ? ` (${Number(entry.count)})` : ''}`
+            : entry.reason;
           item.innerHTML = `
             <div>
-              <div class="log-reason">${UI.escapeHtml(entry.reason)}</div>
-              <div class="log-date">🕒 ${UI.escapeHtml(UI.formatDateTimeAr(entry.timestamp))}</div>
+              <div class="log-reason">${UI.escapeHtml(reasonText)}</div>
+              ${isSummary ? '' : `<div class="log-date">🕒 ${UI.escapeHtml(UI.formatDateTimeAr(entry.timestamp))}</div>`}
             </div>
             <span class="log-amount ${isPositive ? 'positive' : 'negative'}">${formattedAmount}</span>
-            ${entry.id && !entry.reverted && !entry.revertOf
+            ${entry.id && !isSummary && !entry.reverted && !entry.revertOf
               ? `<button type="button" class="btn btn-sm btn-secondary" data-undo-log="${UI.escapeHtml(entry.id)}" style="margin-inline-start:.5rem;">↩️ تراجع</button>`
               : ''}
           `;
