@@ -1363,8 +1363,9 @@ background-color: #000000;
  *  -------------------------------------------------------------------------- */
 .studio-layout {
     display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-areas: "controls preview";
+    gap: 1.25rem;
     align-items: start;
 }
 
@@ -1415,13 +1416,15 @@ background-color: #000000;
 
 .canvas-pair {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 1.25rem;
+    gap: 1rem;
     width: 100%;
 }
 
 .canvas-wrapper {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1441,6 +1444,197 @@ background-color: #000000;
     box-shadow: var(--shadow-md);
     max-width: 100%;
     height: auto;
+}
+
+/* على الشاشات الواسعة: الوجهان جنباً إلى جنب بحجم يتكيّف مع عرض العمود */
+.canvas-preview-area .card-canvas { width: 100%; max-width: 340px; }
+
+/* ---------- شريط أدوات الاستوديو ---------- */
+.studio-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+}
+
+.tb-field .form-label { margin-bottom: 0.3rem; }
+.tb-reset { align-self: end; }
+.tb-hint { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted); }
+.tb-hint:empty { display: none; }
+
+/* ---------- المعاينة الحية (ثابتة أثناء التمرير) ---------- */
+.studio-preview {
+    grid-area: preview;
+    position: sticky;
+    top: calc(var(--app-header-h, 0px) + 0.75rem);
+    z-index: 30;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 0.9rem;
+}
+
+.preview-head { margin-bottom: 0.75rem; }
+.face-toggle {
+    display: none;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.face-btn {
+    padding: 0.4rem 0.95rem;
+    border: none;
+    background-color: var(--bg-input);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.face-btn.active { background: var(--gradient-primary); color: #ffffff; }
+
+/* ---------- أقسام التحكم القابلة للطي ---------- */
+.studio-controls {
+    grid-area: controls;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.studio-acc {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.studio-acc > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1rem;
+    font-weight: 700;
+    user-select: none;
+}
+
+.studio-acc > summary::-webkit-details-marker { display: none; }
+.studio-acc > summary::after {
+    content: '▾';
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+.studio-acc[open] > summary::after { transform: rotate(180deg); }
+.studio-acc[open] > summary { background-color: var(--bg-muted); border-bottom: 1px solid var(--border-color); }
+.studio-acc > summary:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: -2px; }
+
+.acc-title { flex: 1; }
+.acc-hint {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background-color: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    padding: 0.08rem 0.55rem;
+    border-radius: 999px;
+}
+.studio-acc[open] .acc-hint { background-color: var(--bg-card); }
+
+.acc-body { padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+.acc-note { font-size: 0.8rem; color: var(--text-muted); }
+
+.ctl-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.3rem; }
+.ctl-head label { font-size: 0.86rem; font-weight: 600; color: var(--text-secondary); }
+.ctl-val {
+    direction: ltr;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary-hover);
+    background-color: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.05rem 0.55rem;
+    font-variant-numeric: tabular-nums;
+}
+.studio-acc input[type="range"] { width: 100%; height: 1.7rem; margin: 0; accent-color: var(--primary); }
+.ctl-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.ctl-color {
+    width: 100%;
+    height: 42px;
+    padding: 3px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+/* ---------- بطاقات رفع الخلفيات ---------- */
+.bg-uploader { position: relative; }
+.bg-drop {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.6rem 0.75rem;
+    padding: 0.7rem;
+    background-color: var(--bg-card);
+    border: 2px dashed var(--primary-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition), background-color var(--transition);
+}
+.bg-drop:hover { border-color: var(--primary); background-color: var(--bg-muted); }
+.bg-uploader.has-image .bg-drop { border-style: solid; }
+.bg-uploader:focus-within .bg-drop { border-color: var(--primary); }
+.bg-thumb {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background-color: var(--bg-muted);
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+.bg-info { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; padding-inline-end: 4.2rem; }
+.bg-info small { color: var(--text-secondary); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bg-pick {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--radius-sm);
+    background: var(--gradient-primary);
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+.bg-clear { position: absolute; top: 0.55rem; inset-inline-end: auto; left: 0.55rem; padding: 0.2rem 0.6rem; }
+
+/* ---------- قسم الطباعة ---------- */
+.studio-print { margin-top: 1.25rem; }
+.print-sub { font-size: 0.85rem; color: var(--text-secondary); margin: -0.4rem 0 0.9rem; }
+.print-tools { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; align-items: center; }
+.print-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
 }
 
 .students-checklist {
@@ -1703,6 +1897,24 @@ input[type="color"] {
     gap: 0.65rem;
 }
 
+/* تذييل نافذة الملف الشخصي للطالب: الحذف عند بداية الصف، ثم إغلاق وحفظ (على الجوال: حفظ بعرض كامل ثم إغلاق وحذف بعرضين متساويين) */
+.modal-footer-actions { align-items: stretch; }
+.modal-footer-actions .ftr-delete { margin-inline-end: auto; }
+.modal-footer-actions .btn { justify-content: center; min-height: 44px; }
+
+@media (max-width: 560px) {
+    .modal-footer-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "save save" "close delete";
+        gap: 0.6rem;
+    }
+    .modal-footer-actions .btn { width: 100%; }
+    .modal-footer-actions .ftr-save { grid-area: save; padding-top: 0.8rem; padding-bottom: 0.8rem; font-size: 1rem; }
+    .modal-footer-actions .ftr-close { grid-area: close; }
+    .modal-footer-actions .ftr-delete { grid-area: delete; margin-inline-end: 0; }
+}
+
 /* --------------------------------------------------------------------------
  *  14. إشعارات Toast السفلية الفورية غير المعطلة للعمل
  *  -------------------------------------------------------------------------- */
@@ -1765,8 +1977,29 @@ input[type="color"] {
  *  -------------------------------------------------------------------------- */
 @media (max-width: 992px) {
     .studio-layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "preview" "controls";
+        gap: 0.75rem;
     }
+
+    /* المعاينة تبقى مثبّتة أعلى الشاشة بوجه واحد، ويبدّل بينهما الزر أو يتبدّل تلقائياً مع القسم المفتوح */
+    .studio-preview { top: calc(var(--app-header-h, 0px) + 0.4rem); padding: 0.55rem; }
+    .preview-head { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .preview-head .form-control { padding: 0.45rem 0.65rem; font-size: 0.88rem; }
+    .face-toggle { display: inline-flex; }
+    .canvas-preview-area { gap: 0; }
+    .canvas-pair[data-face="front"] [data-face-wrap="back"],
+    .canvas-pair[data-face="back"] [data-face-wrap="front"] { display: none; }
+    .canvas-wrapper > span { display: none; }
+    .canvas-preview-area .card-canvas { width: auto; max-height: 27vh; max-width: 100%; }
+
+    .studio-toolbar { grid-template-columns: 1fr 1fr; gap: 0.5rem 0.6rem; padding: 0.7rem; }
+    .studio-toolbar .form-control { padding: 0.5rem 0.6rem; font-size: 0.9rem; }
+    .studio-toolbar .form-label { font-size: 0.8rem; }
+    .tb-reset { grid-column: 1 / -1; padding: 0.5rem; font-size: 0.88rem; }
+    .print-tools { grid-template-columns: 1fr; }
+    .print-tools .action-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .print-footer .btn { flex: 1 1 100%; }
 }
 
 @media (max-width: 768px) {

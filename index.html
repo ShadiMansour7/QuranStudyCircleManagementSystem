@@ -169,187 +169,206 @@
          ------------------------------------------------------------------ -->
     <section id="view-cards" class="view-section">
       <div class="section-header">
-        <h2 class="section-title">🪪 استوديو تصميم بطاقات الطلاب وتصدير PDF للطباعة المزدوجة</h2>
-        <div class="action-group">
-          <button type="button" class="btn btn-secondary" id="btn-reset-card-design">
-            <span>🔄</span>
-            <span>استعادة الإحداثيات الافتراضية</span>
-          </button>
-          <button type="button" class="btn btn-primary btn-lg" id="btn-export-cards-pdf">
-            <span>🖨️</span>
-            <span>تصدير البطاقات المحددة (PDF Duplex)</span>
-          </button>
+        <h2 class="section-title">🪪 استوديو البطاقات</h2>
+      </div>
+
+      <!-- شريط أدوات الاستوديو: شكل البطاقة والخط واستعادة الافتراضي -->
+      <div class="studio-toolbar">
+        <div class="tb-field">
+          <label class="form-label" for="cfg-card-orientation">شكل البطاقة</label>
+          <select id="cfg-card-orientation" class="form-control">
+            <option value="landscape">بطاقة عرضية</option>
+            <option value="portrait">بطاقة طولية</option>
+          </select>
+          <small id="cfg-orient-hint" class="tb-hint"></small>
         </div>
+        <div class="tb-field">
+          <label class="form-label" for="cfg-card-font">الخط</label>
+          <select id="cfg-card-font" class="form-control"></select>
+          <small id="cfg-font-hint" class="tb-hint"></small>
+        </div>
+        <button type="button" class="btn btn-secondary tb-reset" id="btn-reset-card-design">
+          <span>🔄</span>
+          <span>استعادة الإحداثيات الافتراضية</span>
+        </button>
       </div>
 
       <div class="studio-layout">
-        <!-- لوحة أدوات التحكم بالتصميم -->
-        <div class="studio-panel">
-          <h3>🎨 إعدادات التصميم والإحداثيات </h3>
-
-          <!-- رفع الخلفيات -->
-          <div class="control-block">
-            <h4>🖼️ صور خلفية البطاقة (اختياري)</h4>
-            <div class="control-grid">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" for="card-front-bg-input">خلفية الوجه الأمامي</label>
-                <input type="file" id="card-front-bg-input" class="form-control" accept="image/*" />
-                <button type="button" class="btn btn-sm btn-danger-outline" id="btn-clear-front-bg" style="margin-top: 0.4rem; width: 100%;">
-                  مسح الخلفية الأمامية
-                </button>
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" for="card-back-bg-input">خلفية الوجه الخلفي</label>
-                <input type="file" id="card-back-bg-input" class="form-control" accept="image/*" />
-                <button type="button" class="btn btn-sm btn-danger-outline" id="btn-clear-back-bg" style="margin-top: 0.4rem; width: 100%;">
-                  مسح الخلفية الخلفية
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- تحكم الوجه الأمامي: اسم الطالب -->
-          <div class="control-block">
-            <h4>👤 الوجه الأمامي: اسم الطالب</h4>
-            <div class="control-grid">
-              <div>
-                <label class="form-label" for="cfg-name-x">الموضع الأفقي (X)</label>
-                <input type="range" id="cfg-name-x" min="10" max="300" value="155" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-name-y">الموضع العمودي (Y)</label>
-                <input type="range" id="cfg-name-y" min="20" max="420" value="160" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-name-size">حجم الخط (px)</label>
-                <input type="number" id="cfg-name-size" class="form-control" min="10" max="60" value="22" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-name-color">لون الخط</label>
-                <input type="color" id="cfg-name-color" value="#0f172a" />
-              </div>
-            </div>
-          </div>
-
-          <!-- تحكم الوجه الأمامي: العمر -->
-          <div class="control-block">
-            <h4>🎂 الوجه الأمامي: عمر الطالب</h4>
-            <div class="control-grid">
-              <div>
-                <label class="form-label" for="cfg-age-x">الموضع الأفقي (X)</label>
-                <input type="range" id="cfg-age-x" min="10" max="300" value="155" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-age-y">الموضع العمودي (Y)</label>
-                <input type="range" id="cfg-age-y" min="20" max="420" value="200" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-age-size">حجم الخط (px)</label>
-                <input type="number" id="cfg-age-size" class="form-control" min="10" max="50" value="16" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-age-color">لون الخط</label>
-                <input type="color" id="cfg-age-color" value="#334155" />
-              </div>
-            </div>
-          </div>
-
-          <!-- تحكم الوجه الأمامي: رمز QR -->
-          <div class="control-block">
-            <h4>🔳 الوجه الأمامي: رمز الـ QR (يحتوي المعرّف ID فقط)</h4>
-            <div class="control-grid">
-              <div>
-                <label class="form-label" for="cfg-qr-x">الموضع الأفقي (X)</label>
-                <input type="range" id="cfg-qr-x" min="5" max="250" value="80" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-qr-y">الموضع العمودي (Y)</label>
-                <input type="range" id="cfg-qr-y" min="10" max="360" value="235" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-qr-size">حجم الرمز (px)</label>
-                <input type="range" id="cfg-qr-size" min="60" max="240" value="150" />
-              </div>
-            </div>
-          </div>
-
-          <!-- تحكم الوجه الخلفي: اسم المسجد الثابت -->
-          <div class="control-block" style="margin-bottom: 0;">
-            <h4>🕌 الوجه الخلفي الثابت: اسم المسجد</h4>
-            <div class="form-group">
-              <label class="form-label" for="cfg-mosque-text">النص الثابت على ظهر جميع البطاقات</label>
-              <input type="text" id="cfg-mosque-text" class="form-control" value="شباب مسجد قطنا" />
-            </div>
-            <div class="control-grid">
-              <div>
-                <label class="form-label" for="cfg-mosque-x">الموضع الأفقي (X)</label>
-                <input type="range" id="cfg-mosque-x" min="10" max="300" value="155" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-mosque-y">الموضع العمودي (Y)</label>
-                <input type="range" id="cfg-mosque-y" min="20" max="420" value="220" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-mosque-size">حجم الخط (px)</label>
-                <input type="number" id="cfg-mosque-size" class="form-control" min="12" max="64" value="24" />
-              </div>
-              <div>
-                <label class="form-label" for="cfg-mosque-color">لون الخط</label>
-                <input type="color" id="cfg-mosque-color" value="#059669" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- لوحة المعاينة المباشرة وتحديد الطلاب للطباعة -->
-        <div class="studio-panel">
-          <h3>👁️ المعاينة الحية للبطاقة واختيار الطلاب</h3>
-
-          <div class="form-group">
-            <label class="form-label" for="card-preview-student-select">اختر طالباً للمعاينة الحية:</label>
-            <select id="card-preview-student-select" class="form-control">
-              <option value="">-- معاينة تجريبية افتراضية --</option>
+        <!-- المعاينة الحية: تبقى ظاهرة أثناء تحريك السلايدرات -->
+        <div class="studio-preview">
+          <div class="preview-head">
+            <select id="card-preview-student-select" class="form-control" aria-label="الطالب المعروض في المعاينة">
+              <option value="">معاينة تجريبية افتراضية</option>
             </select>
+            <div class="face-toggle" role="tablist" aria-label="وجه البطاقة">
+              <button type="button" class="face-btn active" data-face-btn="front" role="tab" aria-selected="true">الأمامي</button>
+              <button type="button" class="face-btn" data-face-btn="back" role="tab" aria-selected="false">الخلفي</button>
+            </div>
           </div>
-
           <div class="canvas-preview-area">
-            <div class="canvas-pair">
-              <div class="canvas-wrapper">
-                <span>الوجه الأمامي (Front)</span>
+            <div class="canvas-pair" id="canvas-pair" data-face="front">
+              <div class="canvas-wrapper" data-face-wrap="front">
+                <span>الوجه الأمامي</span>
                 <canvas id="card-front-canvas" class="card-canvas" width="310" height="440"></canvas>
               </div>
-              <div class="canvas-wrapper">
-                <span>الوجه الخلفي الثابت (Back)</span>
+              <div class="canvas-wrapper" data-face-wrap="back">
+                <span>الوجه الخلفي</span>
                 <canvas id="card-back-canvas" class="card-canvas" width="310" height="440"></canvas>
               </div>
             </div>
           </div>
+        </div>
 
-          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.25rem 0;" />
-
-          <div>
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-              <h4 style="font-size: 0.96rem; font-weight: 700;">✅ تحديد الطلاب المراد طباعة بطاقاتهم (8 بطاقات / صفحة A4)</h4>
-              <div class="action-group">
-                <button type="button" class="btn btn-sm btn-outline" id="btn-cards-select-all">تحديد الكل</button>
-                <button type="button" class="btn btn-sm btn-secondary" id="btn-cards-deselect-all">إلغاء الكل</button>
-              </div>
+        <!-- أدوات التحكم بالتصميم: أقسام قابلة للطي -->
+        <div class="studio-controls">
+        <details class="studio-acc" open>
+          <summary><span class="acc-title">🖼️ صور الخلفية</span><span class="acc-hint">اختياري</span></summary>
+          <div class="acc-body">
+            <div class="bg-uploader" data-side="front">
+              <input type="file" id="card-front-bg-input" accept="image/*" hidden />
+              <label class="bg-drop" for="card-front-bg-input">
+                <span class="bg-thumb" id="bg-thumb-front" aria-hidden="true">🖼️</span>
+                <span class="bg-info">
+                  <strong>الوجه الأمامي</strong>
+                  <small id="bg-name-front">لم تُختر صورة بعد</small>
+                </span>
+                <span class="bg-pick">📁 اختيار صورة</span>
+              </label>
+              <button type="button" class="btn btn-sm btn-danger-outline bg-clear" id="btn-clear-front-bg">🗑️ مسح</button>
             </div>
-
-            <div class="form-group" style="margin-top: 0.65rem; margin-bottom: 0.5rem;">
-              <select id="cards-circle-filter" class="form-control">
-                <option value="ALL">عرض طلاب جميع الحلقات</option>
-              </select>
-            </div>
-
-            <div class="students-checklist" id="cards-students-checklist">
-              <!-- قائمة اختيار الطلاب للطباعة تُولد ديناميكياً -->
-            </div>
-            <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
-              <span id="cards-selected-count-label">عدد الطلاب المحددين: 0</span>
-              <span>ترتيب الطباعة: صفحة أمامي (8) تليها صفحة خلفي (8)</span>
+            <div class="bg-uploader" data-side="back">
+              <input type="file" id="card-back-bg-input" accept="image/*" hidden />
+              <label class="bg-drop" for="card-back-bg-input">
+                <span class="bg-thumb" id="bg-thumb-back" aria-hidden="true">🖼️</span>
+                <span class="bg-info">
+                  <strong>الوجه الخلفي</strong>
+                  <small id="bg-name-back">لم تُختر صورة بعد</small>
+                </span>
+                <span class="bg-pick">📁 اختيار صورة</span>
+              </label>
+              <button type="button" class="btn btn-sm btn-danger-outline bg-clear" id="btn-clear-back-bg">🗑️ مسح</button>
             </div>
           </div>
+        </details>
+        <details class="studio-acc" data-face="front" open>
+          <summary><span class="acc-title">👤 اسم الطالب</span><span class="acc-hint">الوجه الأمامي</span></summary>
+          <div class="acc-body">
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-name-x">الموضع الأفقي (X)</label><output class="ctl-val" data-for="cfg-name-x"></output></div>
+            <input type="range" id="cfg-name-x" min="10" max="300" value="155" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-name-y">الموضع العمودي (Y)</label><output class="ctl-val" data-for="cfg-name-y"></output></div>
+            <input type="range" id="cfg-name-y" min="20" max="420" value="160" />
+          </div>
+          <div class="ctl-inline">
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-name-size">حجم الخط (px)</label></div>
+              <input type="number" id="cfg-name-size" class="form-control" min="10" max="60" value="22" />
+            </div>
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-name-color">لون الخط</label></div>
+              <input type="color" id="cfg-name-color" class="ctl-color" value="#0f172a" />
+            </div>
+          </div>
+          </div>
+        </details>
+        <details class="studio-acc" data-face="front">
+          <summary><span class="acc-title">🎂 عمر الطالب</span><span class="acc-hint">الوجه الأمامي</span></summary>
+          <div class="acc-body">
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-age-x">الموضع الأفقي (X)</label><output class="ctl-val" data-for="cfg-age-x"></output></div>
+            <input type="range" id="cfg-age-x" min="10" max="300" value="155" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-age-y">الموضع العمودي (Y)</label><output class="ctl-val" data-for="cfg-age-y"></output></div>
+            <input type="range" id="cfg-age-y" min="20" max="420" value="200" />
+          </div>
+          <div class="ctl-inline">
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-age-size">حجم الخط (px)</label></div>
+              <input type="number" id="cfg-age-size" class="form-control" min="10" max="50" value="16" />
+            </div>
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-age-color">لون الخط</label></div>
+              <input type="color" id="cfg-age-color" class="ctl-color" value="#334155" />
+            </div>
+          </div>
+          </div>
+        </details>
+        <details class="studio-acc" data-face="front">
+          <summary><span class="acc-title">🔳 رمز الـ QR</span><span class="acc-hint">الوجه الأمامي</span></summary>
+          <div class="acc-body">
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-qr-x">الموضع الأفقي (X)</label><output class="ctl-val" data-for="cfg-qr-x"></output></div>
+            <input type="range" id="cfg-qr-x" min="5" max="250" value="80" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-qr-y">الموضع العمودي (Y)</label><output class="ctl-val" data-for="cfg-qr-y"></output></div>
+            <input type="range" id="cfg-qr-y" min="10" max="360" value="235" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-qr-size">حجم الرمز (px)</label><output class="ctl-val" data-for="cfg-qr-size"></output></div>
+            <input type="range" id="cfg-qr-size" min="60" max="240" value="150" />
+          </div>
+          <p class="acc-note">يحتوي الرمز المعرّف (ID) فقط.</p>
+          </div>
+        </details>
+        <details class="studio-acc" data-face="back">
+          <summary><span class="acc-title">🕌 اسم المسجد</span><span class="acc-hint">الوجه الخلفي</span></summary>
+          <div class="acc-body">
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-mosque-text">النص الثابت على ظهر جميع البطاقات</label></div>
+            <input type="text" id="cfg-mosque-text" class="form-control" value="شباب مسجد قطنا" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-mosque-x">الموضع الأفقي (X)</label><output class="ctl-val" data-for="cfg-mosque-x"></output></div>
+            <input type="range" id="cfg-mosque-x" min="10" max="300" value="155" />
+          </div>
+          <div class="ctl">
+            <div class="ctl-head"><label for="cfg-mosque-y">الموضع العمودي (Y)</label><output class="ctl-val" data-for="cfg-mosque-y"></output></div>
+            <input type="range" id="cfg-mosque-y" min="20" max="420" value="220" />
+          </div>
+          <div class="ctl-inline">
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-mosque-size">حجم الخط (px)</label></div>
+              <input type="number" id="cfg-mosque-size" class="form-control" min="12" max="64" value="24" />
+            </div>
+            <div class="ctl">
+              <div class="ctl-head"><label for="cfg-mosque-color">لون الخط</label></div>
+              <input type="color" id="cfg-mosque-color" class="ctl-color" value="#059669" />
+            </div>
+          </div>
+          </div>
+        </details>
+        </div>
+      </div>
+
+      <!-- اختيار الطلاب والطباعة -->
+      <div class="studio-panel studio-print">
+        <h3>🖨️ طباعة البطاقات</h3>
+        <p class="print-sub">8 بطاقات في صفحة A4: صفحة أمامية تليها صفحة خلفية.</p>
+
+        <div class="print-tools">
+          <select id="cards-circle-filter" class="form-control" aria-label="تصفية الطلاب حسب الحلقة">
+            <option value="ALL">طلاب جميع الحلقات</option>
+          </select>
+          <div class="action-group">
+            <button type="button" class="btn btn-sm btn-outline" id="btn-cards-select-all">تحديد الكل</button>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-cards-deselect-all">إلغاء الكل</button>
+          </div>
+        </div>
+
+        <div class="students-checklist" id="cards-students-checklist">
+          <!-- قائمة اختيار الطلاب للطباعة تُولد ديناميكياً -->
+        </div>
+
+        <div class="print-footer">
+          <span id="cards-selected-count-label">عدد الطلاب المحددين: 0</span>
+          <button type="button" class="btn btn-primary btn-lg" id="btn-export-cards-pdf">
+            <span>🖨️</span>
+            <span>تصدير البطاقات المحددة PDF</span>
+          </button>
         </div>
       </div>
     </section>
@@ -607,14 +626,12 @@
             <select id="edit-student-circle" class="form-control" required></select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-danger-outline" id="btn-delete-student">
+        <div class="modal-footer modal-footer-actions">
+          <button type="button" class="btn btn-danger-outline ftr-delete" id="btn-delete-student">
             🗑️ حذف الطالب
           </button>
-          <div class="action-group">
-            <button type="button" class="btn btn-secondary" data-close-modal="modal-edit-student">إغلاق</button>
-            <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
-          </div>
+          <button type="button" class="btn btn-secondary ftr-close" data-close-modal="modal-edit-student">إغلاق</button>
+          <button type="submit" class="btn btn-primary ftr-save">💾 حفظ التعديلات</button>
         </div>
       </form>
     </div>
