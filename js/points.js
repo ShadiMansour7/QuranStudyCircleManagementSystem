@@ -90,11 +90,16 @@ const PointsView = {
         const form = document.getElementById('form-batch-ids-points');
         if (form) form.reset();
         UI.fillAttendanceCircles('batch');
+        this.updateBatchIdsFeedback();
         UI.openModal('modal-batch-ids-points');
       });
     }
 
-    // معالجة نموذج الإدخال الجماعي بالمعرّفات المفصولة بفاصلة (,)
+    // تأكيد فوري لما تعرّف عليه الحقل أثناء الكتابة
+    const batchTa = document.getElementById('batch-ids-textarea');
+    if (batchTa) batchTa.addEventListener('input', () => this.updateBatchIdsFeedback());
+
+    // معالجة نموذج الإدخال الجماعي بالمعرّفات المكتوبة متتالية
     const batchForm = document.getElementById('form-batch-ids-points');
     if (batchForm) {
       batchForm.addEventListener('submit', (e) => {
@@ -387,15 +392,104 @@ const PointsView = {
     return cleaned;
   },
 
+  /**
+   * تحليل معرّفات مكتوبة ورا بعضها بلا أي فاصل، مثل:
+   *   QAT1001QAD1003QAT1005  |  100110031005  |  QAT-1001QAD-1003
+   * (أي فواصل أو مسافات أو شرطات تُهمَل إن وُجدت). سلسلة الأرقام المتصلة تُقسَّم بالاعتماد
+   * على أرقام الطلاب المسجّلين فعلاً، فلا يلتبس 1001 مع 1002.
+   * @returns {{ids: string[], unknown: string[]}} معرّفات طلاب موجودين (بلا تكرار) ونصوص لم تطابق أحداً
+   */
+  parseConcatenatedIds(rawText) {
+    const text = String(rawText || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const byNumber = new Map();
+    DB.getStudents({}).forEach((s) => {
+      const m = String(s.id).match(/(\d+)$/);
+      if (m) byNumber.set(m[1], s);
+    });
+    const ids = [];
+    const unknown = [];
+    const addKnown = (s) => {
+      if (!ids.includes(s.id)) ids.push(s.id);
+    };
+    const addUnknown = (t) => {
+      if (!unknown.includes(t)) unknown.push(t);
+    };
+
+    // تقسيم سلسلة أرقام: أقل عدد من القطع غير المعروفة أولاً، ثم أقل عدد من القطع
+    const split = (digits) => {
+      const n = digits.length;
+      const memo = new Array(n + 1).fill(null);
+      memo[n] = { cost: 0, count: 0, next: n };
+      const solve = (i) => {
+        if (memo[i]) return memo[i];
+        let best = null;
+        const consider = (len, unk) => {
+          const r = solve(i + len);
+          const cand = { cost: r.cost + unk, count: r.count + 1, next: i + len };
+          if (!best || cand.cost < best.cost || (cand.cost === best.cost && cand.count < best.count)) best = cand;
+        };
+        for (let len = 3; len <= 7 && i + len <= n; len++) {
+          if (byNumber.has(digits.slice(i, i + len))) consider(len, 0);
+        }
+        consider(Math.min(4, n - i), 1);
+        memo[i] = best;
+        return best;
+      };
+      const parts = [];
+      for (let i = 0; i < n; ) {
+        const step = solve(i);
+        parts.push(digits.slice(i, step.next));
+        i = step.next;
+      }
+      return parts;
+    };
+
+    const re = /([A-Z]*)(\d+)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const prefix = m[1];
+      split(m[2]).forEach((num, idx) => {
+        const st = byNumber.get(num);
+        const typed = idx === 0 && prefix ? `${prefix}-${num}` : num;
+        // إن كُتبت بادئة تخالف بادئة الطالب الفعلية تُعدّ غير موجودة (لا نمنح نقاطاً لطالب آخر)
+        if (st && (idx > 0 || !prefix || st.id.toUpperCase() === typed)) addKnown(st);
+        else addUnknown(typed);
+      });
+    }
+    return { ids, unknown };
+  },
+
+  /** سطر تأكيد تحت الحقل: من تعرّفنا عليهم ومن لم نجده (يساعد لأن الكتابة المتصلة تخفي الأخطاء) */
+  updateBatchIdsFeedback() {
+    const ta = document.getElementById('batch-ids-textarea');
+    const box = document.getElementById('batch-ids-feedback');
+    if (!ta || !box) return;
+    if (!ta.value.trim()) {
+      box.textContent = '';
+      return;
+    }
+    const { ids, unknown } = this.parseConcatenatedIds(ta.value);
+    const names = ids
+      .slice(0, 5)
+      .map((id) => (DB.getStudentById(id) || {}).name || id)
+      .join('، ');
+    const parts = [];
+    if (ids.length) parts.push(`✅ تم التعرّف على ${ids.length}: ${names}${ids.length > 5 ? '…' : ''}`);
+    if (unknown.length) parts.push(`⚠️ غير موجود: ${unknown.join('، ')}`);
+    box.textContent = parts.join(' • ') || '⚠️ لم يُتعرَّف على أي معرّف';
+  },
+
   handleBatchIdsSubmit() {
     const cfg = UI.readAttendanceFields('batch');
     const rawText = document.getElementById('batch-ids-textarea').value;
 
-    // فصل المعرّفات بالفاصلة (,) أو (،) أو الأسطر أو المسافات
-    const tokens = String(rawText || '')
-      .split(/[,،\s]+/)
-      .map((t) => this.normalizeInputStudentId(t))
-      .filter(Boolean);
+    // المعرّفات مكتوبة ورا بعضها بلا فاصل (تُقسَّم حسب أرقام الطلاب المسجّلين)
+    const parsed = this.parseConcatenatedIds(rawText);
+    const tokens = [...parsed.ids, ...parsed.unknown];
+    if (!tokens.length) {
+      UI.showToast('اكتب معرّفاً واحداً على الأقل', 'warning', 3000);
+      return;
+    }
 
     try {
       const preview = DB.applyAttendanceSession({ ...cfg, presentTokens: tokens, dryRun: true });

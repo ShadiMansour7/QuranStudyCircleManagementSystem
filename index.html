@@ -750,18 +750,19 @@
 
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="batch-ids-textarea">
-              معرّفات الطلاب الحاضرين (IDs) مفصولة بفاصلة <code>,</code> *
+              معرّفات الطلاب الحاضرين (IDs) مكتوبة ورا بعضها بلا فاصل *
             </label>
             <textarea
               id="batch-ids-textarea"
               class="form-control"
               rows="4"
               dir="ltr"
-              placeholder="QAT-1001, QAT-1002, QAT-1005 أو 1001, 1002, 1005"
+              placeholder="QAT1001QAD1003QAT1005   أو   100110031005"
               
             ></textarea>
+            <small id="batch-ids-feedback" aria-live="polite" style="display: block; margin-top: 0.35rem; color: var(--text-secondary);"></small>
             <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
-              يمكنك كتابة المعرّف كاملاً مثل <code>QAT-1001</code> أو الرقم فقط <code>1001</code> مع الفصل بفاصلة <code>,</code>.
+              اكتب المعرّفات متتالية بلا فاصلة أو مسافة أو شرطة: الأرقام فقط <code>100110031005</code> أو المعرّف كاملاً <code>QAT1001QAD1003</code>.
             </small>
           </div>
         </div>
