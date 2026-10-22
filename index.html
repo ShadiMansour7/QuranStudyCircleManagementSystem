@@ -809,9 +809,10 @@
               <span class="status-dot"></span>
               <strong id="qr-scanner-status-text">⚡ وجّه الكاميرا نحو البطاقات تباعاً دون توقف (مهلة ثانيتين لمنع تكرار نفس البطاقة)، ثم اضغط «إنهاء الجلسة وتطبيق النقاط».</strong>
             </div>
-            <div class="action-group">
-              <button type="button" class="btn btn-sm btn-primary" id="btn-start-camera-scan">تشغيل الكاميرا 📷</button>
-              <button type="button" class="btn btn-sm btn-danger" id="btn-stop-camera-scan" style="display: none;">إيقاف الكاميرا ⏹️</button>
+            <div class="action-group" style="width: 100%;">
+              <button type="button" class="btn btn-sm btn-primary" id="btn-start-camera-scan" style="flex: 1 1 0; min-width: 0;">تشغيل الكاميرا 📷</button>
+              <button type="button" class="btn btn-sm btn-secondary" id="btn-switch-camera-scan" style="display: none; flex: 1 1 0; min-width: 0;" aria-label="تبديل الكاميرا">🔄 تبديل الكاميرا</button>
+              <button type="button" class="btn btn-sm btn-danger" id="btn-stop-camera-scan" style="display: none; flex: 1 1 0; min-width: 0;">إيقاف الكاميرا ⏹️</button>
             </div>
           </div>
 

@@ -13,6 +13,10 @@ const QRScanner = {
   lastScanned: { code: null, timestamp: 0 },
   cooldownMs: 2000,
   presentIds: [], // معرّفات الحاضرين بترتيب المسح
+  cameras: [], // [{ id, label, score }] مرتّبة: الخلفية الرئيسية أولاً ثم بقية الخلفية ثم الأمامية
+  currentCameraId: null,
+  preferredCameraId: null, // اختيار المستخدم خلال هذه الجلسة فقط؛ الافتراضي دائماً الخلفية الرئيسية
+  isStarting: false,
 
   init() {
     this.bindEvents();
@@ -26,6 +30,7 @@ const QRScanner = {
     on('btn-open-qr-scanner', () => this.openScannerModal());
     on('btn-start-camera-scan', () => this.startCamera());
     on('btn-stop-camera-scan', () => this.stopCamera());
+    on('btn-switch-camera-scan', () => this.switchCamera());
     on('btn-finish-attendance', () => this.finishSession());
 
     // تغيير الحلقة يعيد حساب الغائبين المتوقعين
@@ -124,9 +129,70 @@ const QRScanner = {
     }
   },
 
+  /* ===== اختيار الكاميرا: الخلفية الرئيسية افتراضياً + إمكانية التبديل ===== */
+
+  // تقدير "رئيسية خلفية" من اسم الكاميرا (يختلف حسب الجهاز والمتصفح):
+  //   iOS: "Back Camera" رئيسية، و"Back Ultra Wide Camera" / "Back Telephoto Camera" ثانوية
+  //   Android: "camera2 0, facing back" رئيسية عادةً (الأرقام الأكبر عدسات إضافية)
+  _cameraScore(cam) {
+    const l = String((cam && cam.label) || '').toLowerCase();
+    let s = 0;
+    if (/back|rear|environment|world|خلف/.test(l)) s += 100;
+    else if (/front|user|facetime|selfie|أمام/.test(l)) s -= 100;
+    if (/ultra|tele|macro|depth|mono|infrared|\bir\b|zoom/.test(l)) s -= 50;
+    if (/triple|dual/.test(l)) s += 10; // كاميرات iOS المركّبة تبدّل العدسات تلقائياً
+    if (l.trim() === 'back camera') s += 20;
+    const m = l.match(/camera2?\s*(\d+)/);
+    if (m) s -= Number(m[1]) * 5;
+    return s;
+  },
+
+  async loadCameras() {
+    try {
+      const list = await Html5Qrcode.getCameras(); // يطلب الصلاحية فتصير الأسماء متاحة
+      this.cameras = (Array.isArray(list) ? list : [])
+        .map((c, i) => ({ id: c.id, label: c.label || '', score: this._cameraScore(c), order: i }))
+        .sort((a, b) => b.score - a.score || a.order - b.order);
+    } catch (err) {
+      console.warn('[QRScanner] تعذر جلب قائمة الكاميرات:', err);
+      this.cameras = [];
+    }
+    return this.cameras;
+  },
+
+  // الكاميرا المقصودة: اختيار المستخدم في هذه الجلسة، وإلا الخلفية الرئيسية، وإلا null (يُستعمل facingMode)
+  _targetCameraId() {
+    if (this.preferredCameraId && this.cameras.some((c) => c.id === this.preferredCameraId)) {
+      return this.preferredCameraId;
+    }
+    return this.cameras.length && this.cameras[0].score > 0 ? this.cameras[0].id : null;
+  },
+
+  _cameraName(id) {
+    const idx = this.cameras.findIndex((c) => c.id === id);
+    if (idx === -1) return '';
+    const c = this.cameras[idx];
+    const kind = /back|rear|environment|world|خلف/i.test(c.label) ? 'خلفية' : /front|user|facetime|selfie|أمام/i.test(c.label) ? 'أمامية' : 'كاميرا';
+    return `${kind} ${idx + 1}/${this.cameras.length}${c.label ? ' (' + c.label + ')' : ''}`;
+  },
+
+  _syncCameraButtons() {
+    const sw = document.getElementById('btn-switch-camera-scan');
+    if (sw) sw.style.display = this.isCameraRunning && this.cameras.length > 1 ? 'inline-flex' : 'none';
+  },
+
+  async switchCamera() {
+    if (this.isStarting || this.cameras.length < 2) return;
+    const idx = this.cameras.findIndex((c) => c.id === this.currentCameraId);
+    const next = this.cameras[(idx + 1) % this.cameras.length];
+    this.preferredCameraId = next.id;
+    await this.stopCamera();
+    await this.startCamera(next.id);
+  },
+
   /* ===== الكاميرا: قراءة مستمرة بدون إغلاق بعد كل بطاقة ===== */
-  async startCamera() {
-    if (this.isCameraRunning) return;
+  async startCamera(forcedCameraId) {
+    if (this.isCameraRunning || this.isStarting) return;
     const statusText = document.getElementById('qr-scanner-status-text');
     const startBtn = document.getElementById('btn-start-camera-scan');
     const stopBtn = document.getElementById('btn-stop-camera-scan');
@@ -137,19 +203,52 @@ const QRScanner = {
       return;
     }
 
+    this.isStarting = true;
     try {
       this.ensureAudioContext();
       if (!this.html5QrCodeInstance) this.html5QrCodeInstance = new Html5Qrcode('qr-reader');
-      await this.html5QrCodeInstance.start(
-        { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-        (decodedText) => this.handleScannedCode(decodedText),
-        () => {} // تجاهل الإطارات الفارغة أثناء البحث المستمر
-      );
+      if (!this.cameras.length) await this.loadCameras();
+
+      // المحاولات بالترتيب: الكاميرا المقصودة، ثم الخلفية عبر facingMode، ثم أي كاميرا متاحة
+      const attempts = [];
+      const target = typeof forcedCameraId === 'string' ? forcedCameraId : this._targetCameraId();
+      if (target) attempts.push(target);
+      attempts.push({ facingMode: 'environment' });
+      if (this.cameras.length && !attempts.includes(this.cameras[0].id)) attempts.push(this.cameras[0].id);
+
+      const scanConfig = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+      const onDecoded = (decodedText) => this.handleScannedCode(decodedText);
+      let started = null;
+      let lastErr = null;
+      for (const cfg of attempts) {
+        try {
+          await this.html5QrCodeInstance.start(cfg, scanConfig, onDecoded, () => {}); // تجاهل الإطارات الفارغة
+          started = cfg;
+          break;
+        } catch (e) {
+          lastErr = e;
+          console.warn('[QRScanner] فشلت محاولة تشغيل الكاميرا:', cfg, e);
+        }
+      }
+      if (started === null) throw lastErr || new Error('no camera');
+
       this.isCameraRunning = true;
+      this.currentCameraId = typeof started === 'string' ? started : null;
+      if (!this.currentCameraId) {
+        try {
+          const st = this.html5QrCodeInstance.getRunningTrackSettings();
+          this.currentCameraId = (st && st.deviceId) || null;
+        } catch (e) {
+          /* تجاهل */
+        }
+      }
       if (startBtn) startBtn.style.display = 'none';
       if (stopBtn) stopBtn.style.display = 'inline-flex';
-      if (statusText) statusText.textContent = 'الكاميرا تعمل — وجّهها نحو البطاقات تباعاً دون توقف';
+      const name = this._cameraName(this.currentCameraId);
+      if (statusText) {
+        statusText.textContent = 'الكاميرا تعمل' + (name ? ' — ' + name : '') + ' — وجّهها نحو البطاقات تباعاً دون توقف';
+      }
+      this._syncCameraButtons();
     } catch (err) {
       console.warn('[QRScanner] تعذر تشغيل الكاميرا:', err);
       this.isCameraRunning = false;
@@ -157,6 +256,9 @@ const QRScanner = {
       if (stopBtn) stopBtn.style.display = 'none';
       if (statusText) statusText.textContent = 'تعذر الوصول للكاميرا — تحقق من الصلاحية';
       UI.showToast('تعذر فتح الكاميرا (تحقق من صلاحية الكاميرا في المتصفح)', 'warning', 3000);
+      this._syncCameraButtons();
+    } finally {
+      this.isStarting = false;
     }
   },
 
@@ -176,6 +278,7 @@ const QRScanner = {
     if (startBtn) startBtn.style.display = 'inline-flex';
     if (stopBtn) stopBtn.style.display = 'none';
     if (statusText) statusText.textContent = 'الكاميرا متوقفة';
+    this._syncCameraButtons();
   },
 
   /* ===== معالجة كل بطاقة: تسجيل حضور فقط (النقاط تُطبّق عند الإنهاء) ===== */
