@@ -2161,3 +2161,16 @@ img.brand-logo {
     .fab-wrap { left: 1rem; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     #view-dashboard { padding-bottom: 4.5rem; }
 }
+
+/* ===== تذييل نافذة الماسح السريع (QR) على الشاشات الصغيرة: عداد في الأعلى وزران بعرض كامل ===== */
+.modal-footer-qr .btn { justify-content: center; min-height: 44px; }
+@media (max-width: 560px) {
+    .modal-footer-qr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.55rem;
+    }
+    .modal-footer-qr #qr-session-counter { text-align: center; }
+    .modal-footer-qr .btn { width: 100%; }
+    .modal-footer-qr #btn-finish-attendance { padding-top: 0.8rem; padding-bottom: 0.8rem; font-size: 1rem; }
+}
