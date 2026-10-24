@@ -2,27 +2,27 @@
  * Service Worker - إدارة الحلقات القرآنية - شباب مسجد قطنا
  *
  * الاستراتيجية:
- *  - ملفات التطبيق (HTML / JS / CSS / manifest): الشبكة أولاً ثم الكاش عند الفشل أو البطء
- *    => أي تعديل تنشره يصل للمستخدم عند أول تحديث للصفحة وهو متصل، ويبقى التطبيق يعمل أوفلاين.
- *  - المكتبات والخطوط والصور (libs/ وأيقونات وخطوط): الكاش أولاً (لا تتغير غالباً، وتوفّر البيانات).
+ *  - ملفات التطبيق (HTML / JS / CSS / manifest): الشبكة أولاً ثم الكاش عند الفشل أو البطء.
+ *  - المكتبات والخطوط والصور: الكاش أولاً.
  *
- * متى أغيّر VERSION؟ فقط عند استبدال/حذف ملف مكتبة أو أيقونة أو خط، لتنظيف الكاش القديم.
- * تعديلات الكود العادية لا تحتاج تغيير الرقم.
+ * تعديل مهم (1.3.0): الملفات الأساسية (CORE) إما تُخزَّن كلها أو يفشل التثبيت ويبقى الكاش
+ * القديم سليماً. سابقاً كان فشل أي ملف يُتجاهل، ثم يُحذف الكاش القديم فيبقى التطبيق بلا ملفات أوفلاين.
+ *
+ * متى أغيّر VERSION؟ عند إضافة/حذف/استبدال ملف في القوائم أدناه.
  */
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const CACHE_PREFIX = 'qatana-quran-circles-';
 const CACHE_NAME = `${CACHE_PREFIX}v${VERSION}`;
-const NETWORK_TIMEOUT_MS = 3000; // أطول مهلة ننتظرها الشبكة قبل الرجوع للكاش
+const NETWORK_TIMEOUT_MS = 4000;
 
-const ASSETS_TO_CACHE = [
+// ملفات لا يعمل التطبيق بدونها: يجب أن تُخزَّن كلها وإلا يفشل التثبيت
+const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon-maskable-192.png',
-  './icon-maskable-512.png',
   './css/style.css',
   './js/db.js',
   './js/ui.js',
@@ -32,7 +32,13 @@ const ASSETS_TO_CACHE = [
   './js/cards-pdf.js',
   './libs/html5-qrcode.min.js',
   './libs/qrious.min.js',
-  './libs/jspdf.umd.min.js',
+  './libs/jspdf.umd.min.js'
+];
+
+// ملفات اختيارية: إن لم تُوجد لا يتأثر التثبيت
+const OPTIONAL_ASSETS = [
+  './icon-maskable-192.png',
+  './icon-maskable-512.png',
   './libs/fonts/Tajawal-Regular.woff2',
   './libs/fonts/Tajawal-Bold.woff2',
   './libs/fonts/Cairo-Regular.woff2',
@@ -41,44 +47,63 @@ const ASSETS_TO_CACHE = [
   './libs/fonts/Amiri-Bold.woff2'
 ];
 
-// التثبيت: تخزين كل ملف على حدة حتى لا يفشل التثبيت كله بسبب ملف ناقص
+async function fetchAndStore(cache, url, required) {
+  try {
+    const response = await fetch(url, { cache: 'reload' });
+    if (!response || !response.ok) throw new Error(`HTTP ${response && response.status}`);
+    await cache.put(url, response);
+  } catch (err) {
+    if (required) throw new Error(`فشل تخزين ملف أساسي: ${url} (${err.message})`);
+    console.warn('[SW] ملف اختياري غير متوفر:', url);
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      await Promise.all(
-        ASSETS_TO_CACHE.map(async (assetUrl) => {
-          try {
-            const response = await fetch(assetUrl, { cache: 'reload' });
-            if (response && response.ok) {
-              await cache.put(assetUrl, response);
-            }
-          } catch (err) {
-            console.warn('[SW] تعذر تخزين الملف أثناء التثبيت:', assetUrl, err);
-          }
-        })
-      );
-      return self.skipWaiting();
-    })
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        await Promise.all(CORE_ASSETS.map((u) => fetchAndStore(cache, u, true)));
+      } catch (err) {
+        // لا نترك كاشاً ناقصاً؛ يبقى الإصدار القديم يعمل ويُعاد المحاولة لاحقاً
+        await caches.delete(CACHE_NAME);
+        throw err;
+      }
+      await Promise.all(OPTIONAL_ASSETS.map((u) => fetchAndStore(cache, u, false)));
+      await self.skipWaiting();
+    })()
   );
 });
 
-// التفعيل: حذف كاش الإصدارات القديمة فقط (يخص هذا التطبيق) والسيطرة الفورية
+// إكمال أي ملف أساسي ناقص (علاج ذاتي) عند توفر الإنترنت
+async function healCache() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of CORE_ASSETS) {
+      if (!(await cache.match(url))) {
+        await fetchAndStore(cache, url, false);
+      }
+    }
+  } catch (e) {
+    /* بدون إنترنت: لا شيء */
+  }
+}
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names
-            .filter((n) => n.startsWith(CACHE_PREFIX) && n !== CACHE_NAME)
-            .map((n) => caches.delete(n))
-        )
-      )
-      .then(() => self.clients.claim())
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((n) => n.startsWith(CACHE_PREFIX) && n !== CACHE_NAME)
+          .map((n) => caches.delete(n))
+      );
+      await self.clients.claim();
+      await healCache();
+    })()
   );
 });
 
-// جلب من الشبكة مع مهلة، وتجاوز كاش المتصفح العادي لضمان أحدث نسخة
 async function fetchWithTimeout(request, ms) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
@@ -89,7 +114,13 @@ async function fetchWithTimeout(request, ms) {
   }
 }
 
-// الشبكة أولاً → الكاش عند الفشل/البطء → صفحة التطبيق الرئيسية للتنقل
+async function matchCached(cache, request) {
+  return (
+    (await cache.match(request, { ignoreSearch: true })) ||
+    (await caches.match(request, { ignoreSearch: true }))
+  );
+}
+
 async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
@@ -99,20 +130,22 @@ async function networkFirst(request) {
     }
     return response;
   } catch (err) {
-    const cached = await cache.match(request, { ignoreSearch: true });
+    const cached = await matchCached(cache, request);
     if (cached) return cached;
     if (request.mode === 'navigate') {
-      const shell = await cache.match('./index.html');
+      const shell =
+        (await cache.match('./index.html')) ||
+        (await cache.match('./')) ||
+        (await caches.match('./index.html'));
       if (shell) return shell;
     }
     return Response.error();
   }
 }
 
-// الكاش أولاً → الشبكة (مع تخزين النتيجة) للملفات الثابتة
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request, { ignoreSearch: true });
+  const cached = await matchCached(cache, request);
   if (cached) return cached;
   const response = await fetch(request);
   if (response && response.ok) {
@@ -126,7 +159,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return; // لا نتدخل بطلبات خارجية
+  if (url.origin !== self.location.origin) return;
 
   const isStatic =
     url.pathname.includes('/libs/') ||
